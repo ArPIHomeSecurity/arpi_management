@@ -1,0 +1,20 @@
+# fill with the access parameters of the host before install
+default_username : pi
+default_password : raspberry
+default_hostname: raspberrypi.local
+
+# access of the installed argus user
+arpi_username : 
+arpi_password : 
+arpi_hostname : 
+
+# database access
+argus_db_schema : argus
+argus_db_username : argus
+argus_db_password : 
+
+# deploy settings
+webapplication_path: webapplication/dist-production
+languages:
+   -en
+   -hu

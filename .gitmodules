@@ -1,0 +1,6 @@
+[submodule "server"]
+	path = server
+	url = https://github.com/gkovacs81/argus_server.git
+[submodule "webapplication"]
+	path = webapplication
+	url = https://github.com/gkovacs81/argus_webapplication.git
