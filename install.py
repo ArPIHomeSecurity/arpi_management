@@ -66,7 +66,7 @@ def install_environment():
     ssh = get_connection()
 
     scp = SCPClient(ssh.get_transport(), progress=progress)
-    scp.put(join(os.environ['ROOT_PATH'], 'management', 'src', 'install_environment.sh'), remote_path='.')
+    scp.put(join(os.environ['ROOT_PATH'], 'management', 'src', 'scripts/install_environment.sh'), remote_path='.')
     deep_copy(ssh, join(os.environ['ROOT_PATH'], 'server', 'etc'), '/tmp/etc', '**/*')
 
     channel = ssh.get_transport().open_session()
