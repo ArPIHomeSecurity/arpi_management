@@ -1,4 +1,5 @@
 .directory
 .settings
+__pycache__
 
 /pyenv/
