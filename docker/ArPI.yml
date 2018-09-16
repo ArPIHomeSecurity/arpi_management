@@ -1,0 +1,32 @@
+version: "3"
+services:
+   server:
+      build:
+         dockerfile: docker/server.dockerfile
+         context: ..
+      volumes:
+         - ipc:/root/server/tmp
+      ports:
+         - 8080:8080
+      networks:
+         - arpi
+   monitor:
+      build:
+         dockerfile: docker/monitor.dockerfile
+         context: ..
+      volumes:
+         - ipc:/root/server/tmp
+      ports:
+         - 8081:8081
+      networks:
+         - arpi
+   database:
+      build:
+         dockerfile: database.dockerfile
+         context: .
+      networks:
+         - arpi
+volumes:
+   ipc:
+networks:
+   arpi:

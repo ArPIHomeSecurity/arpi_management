@@ -19,6 +19,7 @@ It defines classes_and_methods
 
 import os
 import sys
+import traceback
 
 from os.path import join
 from pprint import pformat
@@ -66,8 +67,8 @@ def install_environment():
     ssh = get_connection()
 
     scp = SCPClient(ssh.get_transport(), progress=progress)
-    scp.put(join(os.environ['ROOT_PATH'], 'management', 'src', 'scripts/install_environment.sh'), remote_path='.')
-    deep_copy(ssh, join(os.environ['ROOT_PATH'], 'server', 'etc'), '/tmp/etc', '**/*')
+    scp.put('scripts/install_environment.sh', remote_path='.')
+    deep_copy(ssh, join(CONFIG['server_path'], 'etc'), '/tmp/etc', '**/*')
 
     channel = ssh.get_transport().open_session()
     channel.get_pty()
@@ -93,18 +94,19 @@ def install_server():
     _, stdout, stderr = ssh.exec_command("mkdir -p  server/scripts; mkdir -p server/etc; mkdir -p server/webapplication")
     print_ssh_output(stdout, stderr)
 
-    scp.put(join(os.environ['ROOT_PATH'], 'server', 'requirements.txt'), remote_path='server')
-    scp.put(join(os.environ['ROOT_PATH'], 'server', 'scripts/reset_database.sh'), remote_path='server/scripts')
-    scp.put(join(os.environ['ROOT_PATH'], 'server', 'scripts/start_monitor.sh'), remote_path='server/scripts')
-    scp.put(join(os.environ['ROOT_PATH'], 'server', 'scripts/stop_monitor.sh'), remote_path='server/scripts')
-    scp.put(join(os.environ['ROOT_PATH'], 'server', 'scripts/start_server.sh'), remote_path='server/scripts')
-    scp.put(join(os.environ['ROOT_PATH'], 'server', 'scripts/update_database_struct.sh'), remote_path='server/scripts')
-    scp.put(join(os.environ['ROOT_PATH'], 'server', 'scripts/install.sh'), remote_path='server/scripts')
-    scp.put(join(os.environ['ROOT_PATH'], 'server', 'etc/common.prod.env'), remote_path='server/etc')
-    scp.put(join(os.environ['ROOT_PATH'], 'server', 'etc/server.prod.env'), remote_path='server/etc')
-    scp.put(join(os.environ['ROOT_PATH'], 'server', 'etc/monitor.prod.env'), remote_path='server/etc')
+    scp.put(join(CONFIG['server_path'], 'requirements.txt'), remote_path='server')
+    scp.put(join(CONFIG['server_path'], 'scripts/reset_database.sh'), remote_path='server/scripts')
+    scp.put(join(CONFIG['server_path'], 'scripts/start_monitor.sh'), remote_path='server/scripts')
+    scp.put(join(CONFIG['server_path'], 'scripts/stop_monitor.sh'), remote_path='server/scripts')
+    scp.put(join(CONFIG['server_path'], 'scripts/start_server.sh'), remote_path='server/scripts')
+    scp.put(join(CONFIG['server_path'], 'scripts/update_database_struct.sh'), remote_path='server/scripts')
+    scp.put(join(CONFIG['server_path'], 'scripts/install.sh'), remote_path='server/scripts')
+    scp.put(join(CONFIG['server_path'], 'etc/common.prod.env'), remote_path='server/etc')
+    scp.put(join(CONFIG['server_path'], 'etc/server.prod.env'), remote_path='server/etc')
+    scp.put(join(CONFIG['server_path'], 'etc/monitor.prod.env'), remote_path='server/etc')
+    scp.put(join(CONFIG['server_path'], 'etc/secrets.env'), remote_path='server/etc')
 
-    deep_copy(ssh, join(os.environ['ROOT_PATH'], 'server', 'src'), join('server', 'src'), '**/*.py')
+    deep_copy(ssh, join(CONFIG['server_path'], 'src'), join('server', 'src'), '**/*.py')
 
     print('Files:\n%s' % pformat(uploaded_files))
 
@@ -197,6 +199,8 @@ USAGE
         indent = len(program_name) * " "
         sys.stderr.write(program_name + ": " + str(e) + "\n")
         sys.stderr.write(indent + "  for help use --help")
+        if args.verbose:
+            traceback.print_exc()
         return 2
 
 
