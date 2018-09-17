@@ -1,4 +1,6 @@
-# Manage Argus components
+# ArPI Home Security system - build tools
+
+## Manage Argus components
 
 1. Activate the python environment
 2. Install requiremensts
@@ -21,4 +23,18 @@ positional arguments:
 optional arguments:
   -h, --help     show this help message and exit
   -v, --verbose  set verbosity level [default: None]
+```
+
+## Run the DEMO with docker-compose
+
+1. Download the docker comopse file
+
+```
+wget https://github.com/ArPIHomeSecurity/arpi_management/blob/master/docker/ArPI.yml
+```
+
+2. Run the application with docker-compose
+
+```
+docker-compose -p ArPI -f docker/ArPI.yml up
 ```
