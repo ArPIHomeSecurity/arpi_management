@@ -15,12 +15,12 @@ ENV LANG=C.UTF-8
 
 ADD server/src ./src
 ADD server/scripts ./scripts
-ADD server/etc/*.dev.* ./etc/
+ADD server/etc/*.demo.* ./etc/
 ADD docker/secrets.env ./etc/
 ADD server/requirements.txt ./
 
-RUN bash -c "source etc/common.dev.env && ./scripts/install.sh dev"
+RUN bash -c "source etc/common.demo.env && ./scripts/install.sh demo"
 
 ADD webapplication/dist-development /root/webapplication/dist-development
 
-CMD ./scripts/start_server.sh dev
+CMD ./scripts/start_server.sh demo
