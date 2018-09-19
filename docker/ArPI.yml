@@ -1,6 +1,7 @@
 version: "3"
 services:
    server:
+      image: arpihomesec/server
       build:
          dockerfile: docker/server.dockerfile
          context: ..
@@ -11,6 +12,7 @@ services:
       networks:
          - arpi
    monitor:
+      image: arpihomesec/monitor
       build:
          dockerfile: docker/monitor.dockerfile
          context: ..
@@ -21,6 +23,7 @@ services:
       networks:
          - arpi
    database:
+      image: arpihomesec/database
       build:
          dockerfile: database.dockerfile
          context: .

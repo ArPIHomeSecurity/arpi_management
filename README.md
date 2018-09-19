@@ -27,14 +27,23 @@ optional arguments:
 
 ## Run the DEMO with docker-compose
 
-1. Download the docker comopse file
+1. Download the docker compose file
 
 ```
-wget https://github.com/ArPIHomeSecurity/arpi_management/blob/master/docker/ArPI.yml
+wget https://raw.githubusercontent.com/ArPIHomeSecurity/arpi_management/master/docker/ArPI.yml
 ```
 
 2. Run the application with docker-compose
 
 ```
+# pull the images
+docker-compose -f docker/ArPI.yml pull
+# start up the database first
+docker-compose -p ArPI -f docker/ArPI.yml up -d database
+# start the system
 docker-compose -p ArPI -f docker/ArPI.yml up
 ```
+
+3. Open the application in your browser
+
+[ArPI](http://localhost:8080)
