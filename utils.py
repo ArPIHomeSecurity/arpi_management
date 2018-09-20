@@ -4,12 +4,14 @@ Created on 2017. aug. 27.
 @author: gkovacs
 '''
 
+import glob
+import os.path
+import subprocess
+
 from os import listdir
 from os.path import isfile, join
 
 from scp import SCPClient
-import glob
-import os.path
 
 
 def collect_files(local_path, file_filter=[]):
@@ -64,3 +66,10 @@ def deep_copy(ssh, source, target, filter):
                 stdin, stdout, stderr = ssh.exec_command("mkdir -p  %s" % join(target, directories))
                 print_ssh_output(stdout, stderr)
             scp.put(fullfilename, remote_path=join(target, directories, filename))
+
+def get_repository_version(path):
+    branch = subprocess.check_output(["git", "-C", path, "rev-parse", "--abbrev-ref", "HEAD"]).strip().decode('utf-8')
+    commit = subprocess.check_output(["git", "-C", path, "rev-parse", "HEAD"]).strip().decode('utf-8')[0:7]
+    return "{}-{}".format(branch, commit) 
+
+
