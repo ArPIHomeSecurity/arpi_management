@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 '''
-install -- shortdesc
+install -- Script for installing the components to a running Raspberry PI Zero Wifi host.
 
 install is a description
 
