@@ -20,15 +20,12 @@ def main():
 
     print("Server: %s" % server_version)
     print("Webapp: %s" % webapplication_version)
-    return
 
-    replace("server/etc/server.demo.env", '{{SERVER_VERSION}}', server_version)
-    replace("server/etc/server.dev.env", '{{SERVER_VERSION}}', server_version)
-    replace("server/etc/server.prod.env", '{{SERVER_VERSION}}', server_version)
+    with open('server/src/server/version.py', 'w') as f:
+        f.write('__version__="{}"'.format(server_version))
 
-    replace("webapplication/src/environments/environment.ts", '{{WEBAPPLICATION_VERSION}}', webapplication_version)
-    replace("webapplication/src/environments/environment.prod.ts", '{{WEBAPPLICATION_VERSION}}', webapplication_version)
-
+    with open('webapplication/src/app/version.ts', 'w') as f:
+        f.write('export const VERSION = "{}"'.format(webapplication_version))
 
 if __name__ == "__main__":
     sys.exit(main())
