@@ -48,7 +48,10 @@ sudo su -c "psql -c \"CREATE USER $ARGUS_DB_USERNAME WITH PASSWORD '$ARGUS_DB_PA
 echo "# Create database"
 sudo su -c "createdb -E UTF8 -e $ARGUS_DB_SCHEMA" postgres
 
-# RTC?
+# RTC
+sudo apt-get install i2c-tools
+#sudo i2cdetect -y 1
+sudo bash -c "echo ds1307 0x68 > /sys/class/i2c-adapter/i2c-1/new_device"
 
 # GSM
 # disable console on serial ports
