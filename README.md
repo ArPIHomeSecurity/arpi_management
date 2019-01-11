@@ -47,3 +47,7 @@ docker-compose -p ArPI -f docker/ArPI.yml up
 3. Open the application in your browser
 
 [ArPI](http://localhost:8080)
+
+<a href="https://www.paypal.me/gkovacs81/">
+  <img alt="Support via PayPal" src="https://cdn.rawgit.com/twolfson/paypal-github-button/1.0.0/dist/button.svg"/>
+</a>
