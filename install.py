@@ -1,20 +1,17 @@
 #!/usr/bin/env python
 # encoding: utf-8
 '''
-install -- Script for installing the components to a running Raspberry PI Zero Wifi host.
 
-install is a description
+Script for installing the components of the arpi security system to a running Raspberry PI Zero Wifi host.
+It uses the configuration file install.yaml!
 
-It defines classes_and_methods
+---
 
-@author:     user_name
+@author:     Gábor Kovács
 
-@copyright:  2017 organization_name. All rights reserved.
+@copyright:  2017 argus-security.info. All rights reserved.
 
-@license:    license
-
-@contact:    user_email
-@deffield    updated: Updated
+@contact:    gkovacs81@gmail.com
 '''
 
 import os
@@ -37,12 +34,12 @@ from utils import print_ssh_output, deep_copy, progress, uploaded_files,\
     print_lines
 
 with open(__file__.replace('.py', '.yaml'), 'r') as stream:
-    CONFIG = yaml.load(stream)
+    CONFIG = yaml.load(stream, Loader=yaml.FullLoader)
 
 __all__ = []
 __version__ = 0.1
 __date__ = '2017-08-21'
-__updated__ = '2017-08-21'
+__updated__ = '2019-08-21'
 
 
 def get_connection():
@@ -157,11 +154,11 @@ def main(argv=None):  # IGNORE:C0111
         sys.argv.extend(argv)
 
     program_name = os.path.basename(sys.argv[0])
-    program_shortdesc = __import__('__main__').__doc__.split("\n")[1]
+    program_shortdesc = __import__('__main__').__doc__.split("---")[0]
     program_license = '''%s
 
-  Created by user_name on %s.
-  Copyright 2017 argus. All rights reserved.
+  Created by gkovacs81@gmail.com on %s.
+  Copyright 2019 arpi-security.info. All rights reserved.
 
 USAGE
 ''' % (program_shortdesc, str(__date__))

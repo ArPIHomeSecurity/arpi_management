@@ -2,18 +2,25 @@
 
 ## Manage Argus components
 
-1. Activate the python environment
-2. Install requiremensts
+1. Create the python environment
+```bash
+pipenv install
+```
+2. Activate the python environment
+```bash
+pipenv shell
+```
 3. Use install script
 
 
 ```
 usage: install.py [-h] [-v] component
 
-install -- shortdesc
+Script for installing the components of the arpi security system to a running Raspberry PI Zero Wifi host.
+It uses the configuration file install.yaml!
 
-  Created by user_name on 2017-08-21.
-  Copyright 2017 argus. All rights reserved.
+  Created by gkovacs81@gmail.com on 2017-08-21.
+  Copyright 2019 arpi-security.info. All rights reserved.
 
 USAGE
 
