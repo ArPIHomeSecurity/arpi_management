@@ -2,6 +2,9 @@
 
 # Install Argus onto a new Rapsbian system
 
+set -x
+
+printenv
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -11,10 +14,12 @@ if ! id -u argus; then
   echo "# Creating user"
   sudo useradd -G sudo -m argus
   echo "argus:argus1" | sudo chpasswd
+  echo "argus ALL=(ALL) NOPASSWD: ALL" | sudo tee -a /etc/sudoers
 
   echo "# Install oh my zsh for argus"
   sudo apt-get update
   sudo apt-get -y upgrade
+  sudo apt-get -y autoremove
   sudo apt-get -y install zsh curl git
   sudo su -c "git clone https://github.com/robbyrussell/oh-my-zsh.git ~/.oh-my-zsh" argus
   sudo su -c "cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc" argus
@@ -23,7 +28,7 @@ if ! id -u argus; then
   echo "# Install certbot"
   sudo su -c "wget -P /home/argus/ https://dl.eff.org/certbot-auto" argus
   sudo su -c "chmod a+x /home/argus/certbot-auto" argus
-  sudo su -c "/home/argus/certbot-auto help" argus
+  sudo su -c "/home/argus/certbot-auto -q help" argus
   sudo apt-get -y install \
     augeas-lenses \
     ca-certificates \
@@ -49,7 +54,7 @@ echo "# Create database"
 sudo su -c "createdb -E UTF8 -e $ARGUS_DB_SCHEMA" postgres
 
 # RTC
-sudo apt-get install i2c-tools
+sudo apt-get install -y i2c-tools
 #sudo i2cdetect -y 1
 sudo bash -c "echo ds1307 0x68 > /sys/class/i2c-adapter/i2c-1/new_device"
 
@@ -65,9 +70,9 @@ printf "\n\n#### NGINX ####\n"
 echo "# Download"
 mkdir ~/nginx_build
 cd ~/nginx_build
-wget http://nginx.org/download/nginx-1.14.0.tar.gz
-tar xvf nginx-1.14.0.tar.gz
-cd nginx-1.14.0
+wget http://nginx.org/download/nginx-1.16.1.tar.gz
+tar xvf nginx-1.16.1.tar.gz
+cd nginx-1.16.1
 echo "# Install prerequisite"
 sudo apt-get -y install \
 	build-essential \
@@ -112,7 +117,8 @@ sudo apt-get -y install \
 # SYSTEMD configuration
 sudo cp -r /tmp/etc/systemd/* /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable nginx.service argus_server.service argus_monitor.service
+# only enable services if the python virtualenv is installed (otherwise after reboot the service will start to install it with sudo)
+# sudo systemctl enable nginx.service argus_server.service argus_monitor.service
 
 echo "# Type Path                     Mode    UID     GID     Age     Argument" | sudo tee /usr/lib/tmpfiles.d/argus.conf
 echo "d /run/argus 0755 argus argus" | sudo tee /usr/lib/tmpfiles.d/argus.conf

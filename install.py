@@ -13,10 +13,9 @@ It uses the configuration file install.yaml!
 
 @contact:    gkovacs81@gmail.com
 '''
-
+import logging
 import os
 import sys
-import traceback
 
 from os.path import join
 from pprint import pformat
@@ -27,14 +26,17 @@ import yaml
 
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
-from paramiko.ssh_exception import NoValidConnectionsError
+from paramiko.ssh_exception import NoValidConnectionsError, AuthenticationException
 from scp import SCPClient
 
 from utils import print_ssh_output, deep_copy, progress, uploaded_files,\
     print_lines
 
-with open(__file__.replace('.py', '.yaml'), 'r') as stream:
-    CONFIG = yaml.load(stream, Loader=yaml.FullLoader)
+CONFIG = {}
+
+logging.basicConfig(format='%(message)s')
+logger = logging.getLogger()
+logging.getLogger("paramiko").setLevel(logging.CRITICAL)
 
 __all__ = []
 __version__ = 0.1
@@ -44,16 +46,17 @@ __updated__ = '2019-08-21'
 
 def get_connection():
     try:
-        print("Connecting... configuration: %s" % CONFIG)
+        logger.info("Connecting %s@%s", CONFIG['arpi_username'], CONFIG['arpi_hostname'])
         ssh = paramiko.SSHClient()
         ssh.load_system_host_keys()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(CONFIG['arpi_hostname'], username=CONFIG['arpi_username'], password=CONFIG['arpi_password'])
-        print("Connected with argus credential")
-    except (NoValidConnectionsError, gaierror):
+        logger.info("Connected")
+    except (AuthenticationException, NoValidConnectionsError, gaierror):
         try:
+            logger.info("Connecting %s@%s", CONFIG['default_username'], CONFIG['default_hostname'])
             ssh.connect(CONFIG['default_hostname'], username=CONFIG['default_username'], password=CONFIG['default_password'])
-            print("Connected with default credential")
+            logger.info("Connected")
         except (NoValidConnectionsError, gaierror):
             raise Exception("Can't connect to the host!")
 
@@ -63,22 +66,26 @@ def get_connection():
 def install_environment():
     ssh = get_connection()
 
+    # create the env variables string because paramiko update_evironment ignores them
+    arguments = {
+        "ARGUS_DB_SCHEMA": CONFIG['argus_db_schema'],
+        "ARGUS_DB_USERNAME": CONFIG['argus_db_username'],
+        "ARGUS_DB_PASSWORD": CONFIG['argus_db_password']
+    }
+    arguments = [f"export {key}={value}" for key, value in arguments.items()]
+    arguments = "; ".join(arguments)
+
     scp = SCPClient(ssh.get_transport(), progress=progress)
-    scp.put('scripts/install_environment.sh', remote_path='.')
+    scp.put("scripts/install_environment.sh", remote_path=".")
     deep_copy(ssh, join(CONFIG['server_path'], 'etc'), '/tmp/etc', '**/*')
 
     channel = ssh.get_transport().open_session()
     channel.get_pty()
     channel.set_combine_stderr(True)
     output = channel.makefile('r', -1)
-    channel.update_environment({
-        "ARGUS_DB_SCHEMA": CONFIG['argus_db_schema'],
-        "ARGUS_DB_USERNAME": CONFIG['argus_db_username'],
-        "ARGUS_DB_PASSWORD":CONFIG['argus_db_password']
-    })
 
-    print("Starting install script...")
-    channel.exec_command("./install_environment.sh",)
+    logger.info("Starting install script...")
+    channel.exec_command(f"{arguments}; ./install_environment.sh",)
     print_lines(output)
     ssh.close()
 
@@ -87,7 +94,7 @@ def install_server():
     ssh = get_connection()
     scp = SCPClient(ssh.get_transport(), progress=progress)
 
-    print("Create server directories...")
+    logger.info("Create server directories...")
     _, stdout, stderr = ssh.exec_command("mkdir -p  server/scripts; mkdir -p server/etc; mkdir -p server/webapplication")
     print_ssh_output(stdout, stderr)
 
@@ -105,9 +112,9 @@ def install_server():
 
     deep_copy(ssh, join(CONFIG['server_path'], 'src'), join('server', 'src'), '**/*.py')
 
-    print('Files:\n%s' % pformat(uploaded_files))
+    logger.info('Files:\n%s' % pformat(uploaded_files))
 
-    print("Starting install script...")
+    logger.info("Starting install script...")
     _, stdout, stderr = ssh.exec_command("cd server; source ./etc/common.prod.env; ./scripts/install.sh")
     print_ssh_output(stdout, stderr)
 
@@ -117,11 +124,11 @@ def install_server():
 def install_database():
     ssh = get_connection()
 
-    print("Updating database structure...")
+    logger.info("Updating database structure...")
     _, stdout, stderr = ssh.exec_command("cd server; ./scripts/update_database_struct.sh prod")
     print_ssh_output(stdout, stderr)
 
-    print("Reseting database content...")
+    logger.info("Reseting database content...")
     _, stdout, stderr = ssh.exec_command("cd server; ./scripts/reset_database.sh prod")
     print_ssh_output(stdout, stderr)
 
@@ -131,18 +138,18 @@ def install_database():
 def install_webapplication():
     ssh = get_connection()
 
-    print("Delete old webapplication on remote site...")
+    logger.info("Delete old webapplication on remote site...")
     _, stdout, stderr = ssh.exec_command("rm -R server/webapplication || true")
     print_ssh_output(stdout, stderr)
 
     scp = SCPClient(ssh.get_transport(), progress=progress)
     scp.put(join(CONFIG['webapplication_path'] + '-en'), remote_path=join('server', 'webapplication'), recursive=True)
-    print('Files: %s' % pformat(uploaded_files))
+    logger.info('Files: %s' % pformat(uploaded_files))
     uploaded_files.clear()
 
     scp = SCPClient(ssh.get_transport(), progress=progress)
     scp.put(join(CONFIG['webapplication_path'] + '-hu'), remote_path=join('server', 'webapplication', 'hu'), recursive=True)
-    print('Files: %s' % pformat(uploaded_files))
+    logger.info('Files: %s' % pformat(uploaded_files))
 
 
 def main(argv=None):  # IGNORE:C0111
@@ -172,13 +179,27 @@ USAGE
         # parser.add_argument("-e", "--exclude", dest="exclude", help="exclude paths matching this regex pattern. [default: %(default)s]", metavar="RE" )
         # parser.add_argument('-V', '--version', action='version', version=program_version_message)
         # parser.add_argument(dest="action", help="install", metavar="action")
-        parser.add_argument(dest="component", help="environment/server/webapplication/database", metavar="component")
+        parser.add_argument("component", choices=["environment", "server", "webapplication", "database"])
+        parser.add_argument("-e", "--env", dest="environment", default="", help="Select a different config (install.{environment}.yaml)")
 
         # Process arguments
         args = parser.parse_args()
-
         if args.verbose:
-            print("Verbose mode on")
+            logger.setLevel(logging.DEBUG)
+            logger.info("Verbose mode on")
+        else:
+            logger.setLevel(logging.INFO)
+
+        config_filename = __file__.replace('.py', '.yaml')
+        if args.environment:
+            config_filename = config_filename.replace(".yaml", "." + args.environment + ".yaml")
+
+        logger.info("Working from %s", config_filename)
+
+        with open(config_filename, 'r') as stream:
+            global CONFIG
+            CONFIG = yaml.load(stream, Loader=yaml.FullLoader)
+            logger.info("Working with configuration: \n%s", pformat(CONFIG))
 
         if args.component == 'environment':
             install_environment()
@@ -190,17 +211,12 @@ USAGE
             install_database()
         return 0
     except KeyboardInterrupt:
-        ### handle keyboard interrupt ###
+        # handle keyboard interrupt ###
         return 0
-    except Exception as e:
-        indent = len(program_name) * " "
-        sys.stderr.write(program_name + ": " + str(e) + "\n")
-        sys.stderr.write(indent + "  for help use --help")
-        if args.verbose:
-            traceback.print_exc()
+    except Exception:
+        logger.exception("Failed to execute!")
         return 2
 
 
 if __name__ == "__main__":
     sys.exit(main())
-
