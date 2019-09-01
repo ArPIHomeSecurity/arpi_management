@@ -1,6 +1,6 @@
 This tutorial describes the installation steps of the Arpi home security system to an SD Card from source.
 
-Create SD card from Raspbian image
+Prepare SD card from Raspbian image
 ========
 1. Download the image: https://www.raspberrypi.org/downloads/raspbian/
 2. Preferred: Raspbian Buster Lite
@@ -23,33 +23,27 @@ sudo raspi-config --expand-rootfs
 sudo reboot
 ```
 
-
-Configure RTC
+Install ArPI on the SD card
 ========
-
-Based on https://thepihut.com/blogs/raspberry-pi-tutorials/17209332-adding-a-real-time-clock-to-your-raspberry-pi
-
+1. Start the Raspberry PI Zero with the prepared SD card
+2. Check the installation configuration file: install.yaml
+3. Install the ArPI components with the management project from your development host (not the raspi)
 ```bash
-sudo i2cdetect -y 1
-sudo modprobe rtc-ds1307
+# activate the python virtual environment
+pipenv shell
+# install the prerequisites
+./install.py environment
+./install.py server
+# build the production webapplication before install
+./install.py webaplication
+./install.py database
 ```
-
-
-Install Argus home security software
-========
-Deploy the code.
-
-1. Setup server
-
-* Copy code [src] -> [/home/argus/server]
-* Copy systemd service [etc/systemd/argus_server.service] -> [/etc/systemd/system/]
-
-2. Build and deploy web application
-
-* npm run build-release
-* Copy build result [webapplication/dist-release] -> [/home/argus/server/webapplication]
-
-3. setup monitor
-
-* Copy code [src] -> [/home/argus/server]
-* Copy systemd service [etc/systemd/argus_monitor.service] -> [/etc/systemd/system/]
+4. You enable the services
+```bash
+# after login to your raspi
+sudo systemctl enable argus_server argus_monitor nginx
+sudo systemctl start argus_server argus_monitor
+# wait some seconds
+sudo systemctl start nginx
+```
+5. You can access the web application
