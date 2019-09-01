@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # encoding: utf-8
-'''
+"""
 
 Script for installing the components of the arpi security system to a running Raspberry PI Zero Wifi host.
 It uses the configuration file install.yaml!
@@ -12,7 +12,7 @@ It uses the configuration file install.yaml!
 @copyright:  2017 argus-security.info. All rights reserved.
 
 @contact:    gkovacs81@gmail.com
-'''
+"""
 import logging
 import os
 import sys
@@ -29,33 +29,32 @@ from argparse import RawDescriptionHelpFormatter
 from paramiko.ssh_exception import NoValidConnectionsError, AuthenticationException
 from scp import SCPClient
 
-from utils import print_ssh_output, deep_copy, progress, uploaded_files,\
-    print_lines
+from utils import print_ssh_output, deep_copy, progress, uploaded_files, print_lines
 
 CONFIG = {}
 
-logging.basicConfig(format='%(message)s')
+logging.basicConfig(format="%(message)s")
 logger = logging.getLogger()
 logging.getLogger("paramiko").setLevel(logging.CRITICAL)
 
 __all__ = []
 __version__ = 0.1
-__date__ = '2017-08-21'
-__updated__ = '2019-08-21'
+__date__ = "2017-08-21"
+__updated__ = "2019-08-21"
 
 
 def get_connection():
     try:
-        logger.info("Connecting %s@%s", CONFIG['arpi_username'], CONFIG['arpi_hostname'])
+        logger.info("Connecting %s@%s", CONFIG["arpi_username"], CONFIG["arpi_hostname"])
         ssh = paramiko.SSHClient()
         ssh.load_system_host_keys()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(CONFIG['arpi_hostname'], username=CONFIG['arpi_username'], password=CONFIG['arpi_password'])
+        ssh.connect(CONFIG["arpi_hostname"], username=CONFIG["arpi_username"], password=CONFIG["arpi_password"])
         logger.info("Connected")
     except (AuthenticationException, NoValidConnectionsError, gaierror):
         try:
-            logger.info("Connecting %s@%s", CONFIG['default_username'], CONFIG['default_hostname'])
-            ssh.connect(CONFIG['default_hostname'], username=CONFIG['default_username'], password=CONFIG['default_password'])
+            logger.info("Connecting %s@%s", CONFIG["default_username"], CONFIG["default_hostname"])
+            ssh.connect(CONFIG["default_hostname"], username=CONFIG["default_username"], password=CONFIG["default_password"])
             logger.info("Connected")
         except (NoValidConnectionsError, gaierror):
             raise Exception("Can't connect to the host!")
@@ -68,24 +67,24 @@ def install_environment():
 
     # create the env variables string because paramiko update_evironment ignores them
     arguments = {
-        "ARGUS_DB_SCHEMA": CONFIG['argus_db_schema'],
-        "ARGUS_DB_USERNAME": CONFIG['argus_db_username'],
-        "ARGUS_DB_PASSWORD": CONFIG['argus_db_password']
+        "ARGUS_DB_SCHEMA": CONFIG["argus_db_schema"],
+        "ARGUS_DB_USERNAME": CONFIG["argus_db_username"],
+        "ARGUS_DB_PASSWORD": CONFIG["argus_db_password"],
     }
     arguments = [f"export {key}={value}" for key, value in arguments.items()]
     arguments = "; ".join(arguments)
 
     scp = SCPClient(ssh.get_transport(), progress=progress)
     scp.put("scripts/install_environment.sh", remote_path=".")
-    deep_copy(ssh, join(CONFIG['server_path'], 'etc'), '/tmp/etc', '**/*')
+    deep_copy(ssh, join(CONFIG["server_path"], "etc"), "/tmp/etc", "**/*")
 
     channel = ssh.get_transport().open_session()
     channel.get_pty()
     channel.set_combine_stderr(True)
-    output = channel.makefile('r', -1)
+    output = channel.makefile("r", -1)
 
     logger.info("Starting install script...")
-    channel.exec_command(f"{arguments}; ./install_environment.sh",)
+    channel.exec_command(f"{arguments}; ./install_environment.sh")
     print_lines(output)
     ssh.close()
 
@@ -98,21 +97,21 @@ def install_server():
     _, stdout, stderr = ssh.exec_command("mkdir -p  server/scripts; mkdir -p server/etc; mkdir -p server/webapplication")
     print_ssh_output(stdout, stderr)
 
-    scp.put(join(CONFIG['server_path'], 'requirements.txt'), remote_path='server')
-    scp.put(join(CONFIG['server_path'], 'scripts/reset_database.sh'), remote_path='server/scripts')
-    scp.put(join(CONFIG['server_path'], 'scripts/start_monitor.sh'), remote_path='server/scripts')
-    scp.put(join(CONFIG['server_path'], 'scripts/stop_monitor.sh'), remote_path='server/scripts')
-    scp.put(join(CONFIG['server_path'], 'scripts/start_server.sh'), remote_path='server/scripts')
-    scp.put(join(CONFIG['server_path'], 'scripts/update_database_struct.sh'), remote_path='server/scripts')
-    scp.put(join(CONFIG['server_path'], 'scripts/install.sh'), remote_path='server/scripts')
-    scp.put(join(CONFIG['server_path'], 'etc/common.prod.env'), remote_path='server/etc')
-    scp.put(join(CONFIG['server_path'], 'etc/server.prod.env'), remote_path='server/etc')
-    scp.put(join(CONFIG['server_path'], 'etc/monitor.prod.env'), remote_path='server/etc')
-    scp.put(join(CONFIG['server_path'], 'etc/secrets.env'), remote_path='server/etc')
+    scp.put(join(CONFIG["server_path"], "requirements.txt"), remote_path="server")
+    scp.put(join(CONFIG["server_path"], "scripts/reset_database.sh"), remote_path="server/scripts")
+    scp.put(join(CONFIG["server_path"], "scripts/start_monitor.sh"), remote_path="server/scripts")
+    scp.put(join(CONFIG["server_path"], "scripts/stop_monitor.sh"), remote_path="server/scripts")
+    scp.put(join(CONFIG["server_path"], "scripts/start_server.sh"), remote_path="server/scripts")
+    scp.put(join(CONFIG["server_path"], "scripts/update_database_struct.sh"), remote_path="server/scripts")
+    scp.put(join(CONFIG["server_path"], "scripts/install.sh"), remote_path="server/scripts")
+    scp.put(join(CONFIG["server_path"], "etc/common.prod.env"), remote_path="server/etc")
+    scp.put(join(CONFIG["server_path"], "etc/server.prod.env"), remote_path="server/etc")
+    scp.put(join(CONFIG["server_path"], "etc/monitor.prod.env"), remote_path="server/etc")
+    scp.put(join(CONFIG["server_path"], "etc/secrets.env"), remote_path="server/etc")
 
-    deep_copy(ssh, join(CONFIG['server_path'], 'src'), join('server', 'src'), '**/*.py')
+    deep_copy(ssh, join(CONFIG["server_path"], "src"), join("server", "src"), "**/*.py")
 
-    logger.info('Files:\n%s' % pformat(uploaded_files))
+    logger.info("Files:\n%s" % pformat(uploaded_files))
 
     logger.info("Starting install script...")
     _, stdout, stderr = ssh.exec_command("cd server; source ./etc/common.prod.env; ./scripts/install.sh")
@@ -143,17 +142,17 @@ def install_webapplication():
     print_ssh_output(stdout, stderr)
 
     scp = SCPClient(ssh.get_transport(), progress=progress)
-    scp.put(join(CONFIG['webapplication_path'] + '-en'), remote_path=join('server', 'webapplication'), recursive=True)
-    logger.info('Files: %s' % pformat(uploaded_files))
+    scp.put(join(CONFIG["webapplication_path"] + "-en"), remote_path=join("server", "webapplication"), recursive=True)
+    logger.info("Files: %s" % pformat(uploaded_files))
     uploaded_files.clear()
 
     scp = SCPClient(ssh.get_transport(), progress=progress)
-    scp.put(join(CONFIG['webapplication_path'] + '-hu'), remote_path=join('server', 'webapplication', 'hu'), recursive=True)
-    logger.info('Files: %s' % pformat(uploaded_files))
+    scp.put(join(CONFIG["webapplication_path"] + "-hu"), remote_path=join("server", "webapplication", "hu"), recursive=True)
+    logger.info("Files: %s" % pformat(uploaded_files))
 
 
 def main(argv=None):  # IGNORE:C0111
-    '''Command line options.'''
+    """Command line options."""
 
     if argv is None:
         argv = sys.argv
@@ -161,14 +160,17 @@ def main(argv=None):  # IGNORE:C0111
         sys.argv.extend(argv)
 
     program_name = os.path.basename(sys.argv[0])
-    program_shortdesc = __import__('__main__').__doc__.split("---")[0]
-    program_license = '''%s
+    program_shortdesc = __import__("__main__").__doc__.split("---")[0]
+    program_license = """%s
 
   Created by gkovacs81@gmail.com on %s.
   Copyright 2019 arpi-security.info. All rights reserved.
 
 USAGE
-''' % (program_shortdesc, str(__date__))
+""" % (
+        program_shortdesc,
+        str(__date__),
+    )
 
     try:
         # Setup argument parser
@@ -190,24 +192,24 @@ USAGE
         else:
             logger.setLevel(logging.INFO)
 
-        config_filename = __file__.replace('.py', '.yaml')
+        config_filename = __file__.replace(".py", ".yaml")
         if args.environment:
             config_filename = config_filename.replace(".yaml", "." + args.environment + ".yaml")
 
         logger.info("Working from %s", config_filename)
 
-        with open(config_filename, 'r') as stream:
+        with open(config_filename, "r") as stream:
             global CONFIG
             CONFIG = yaml.load(stream, Loader=yaml.FullLoader)
             logger.info("Working with configuration: \n%s", pformat(CONFIG))
 
-        if args.component == 'environment':
+        if args.component == "environment":
             install_environment()
-        elif args.component == 'server':
+        elif args.component == "server":
             install_server()
-        elif args.component == 'webapplication':
+        elif args.component == "webapplication":
             install_webapplication()
-        elif args.component == 'database':
+        elif args.component == "database":
             install_database()
         return 0
     except KeyboardInterrupt:
