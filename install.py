@@ -14,7 +14,6 @@ It uses the configuration file install.yaml!
 @contact:    gkovacs81@gmail.com
 """
 import logging
-import os
 import sys
 
 from os.path import join
@@ -159,7 +158,6 @@ def main(argv=None):  # IGNORE:C0111
     else:
         sys.argv.extend(argv)
 
-    program_name = os.path.basename(sys.argv[0])
     program_shortdesc = __import__("__main__").__doc__.split("---")[0]
     program_license = """%s
 
@@ -177,8 +175,6 @@ USAGE
         parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
         # parser.add_argument("-r", "--recursive", dest="recurse", action="store_true", help="recurse into subfolders [default: %(default)s]")
         parser.add_argument("-v", "--verbose", dest="verbose", action="count", help="set verbosity level [default: %(default)s]")
-        # parser.add_argument("-i", "--include", dest="include", help="only include paths matching this regex pattern. Note: exclude is given preference over include. [default: %(default)s]", metavar="RE" )
-        # parser.add_argument("-e", "--exclude", dest="exclude", help="exclude paths matching this regex pattern. [default: %(default)s]", metavar="RE" )
         # parser.add_argument('-V', '--version', action='version', version=program_version_message)
         # parser.add_argument(dest="action", help="install", metavar="action")
         parser.add_argument("component", choices=["environment", "server", "webapplication", "database"])
