@@ -123,6 +123,10 @@ sudo systemctl daemon-reload
 echo "# Type Path                     Mode    UID     GID     Age     Argument" | sudo tee /usr/lib/tmpfiles.d/argus.conf
 echo "d /run/argus 0755 argus argus" | sudo tee /usr/lib/tmpfiles.d/argus.conf
 
+# Enable serial port to GSM module
+sudo systemctl stop hciuart
+sudo systemctl disable hciuart
+
 # Setup hostname
 echo "Change hostname"
 echo "arpi.local" | sudo tee /etc/hostname
