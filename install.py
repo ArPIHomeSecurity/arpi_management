@@ -97,11 +97,11 @@ def install_server():
     print_ssh_output(stdout, stderr)
 
     scp.put(join(CONFIG["server_path"], "requirements.txt"), remote_path="server")
-    scp.put(join(CONFIG["server_path"], "scripts/reset_database.sh"), remote_path="server/scripts")
+    scp.put(join(CONFIG["server_path"], "scripts/update_database_data.sh"), remote_path="server/scripts")
+    scp.put(join(CONFIG["server_path"], "scripts/update_database_struct.sh"), remote_path="server/scripts")
     scp.put(join(CONFIG["server_path"], "scripts/start_monitor.sh"), remote_path="server/scripts")
     scp.put(join(CONFIG["server_path"], "scripts/stop_monitor.sh"), remote_path="server/scripts")
     scp.put(join(CONFIG["server_path"], "scripts/start_server.sh"), remote_path="server/scripts")
-    scp.put(join(CONFIG["server_path"], "scripts/update_database_struct.sh"), remote_path="server/scripts")
     scp.put(join(CONFIG["server_path"], "scripts/install.sh"), remote_path="server/scripts")
     scp.put(join(CONFIG["server_path"], "etc/common.prod.env"), remote_path="server/etc")
     scp.put(join(CONFIG["server_path"], "etc/server.prod.env"), remote_path="server/etc")
