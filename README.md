@@ -14,9 +14,10 @@ pipenv shell
 
 
 ```
-usage: install.py [-h] [-v] component
+usage: install.py [-h] [-v] [-e ENVIRONMENT]
+                  {environment,server,webapplication,database}
 
-Script for installing the components of the arpi security system to a running Raspberry PI Zero Wifi host.
+Script for installing the components of the ArPI home security system to a running Raspberry PI Zero Wifi host.
 It uses the configuration file install.yaml!
 
   Created by gkovacs81@gmail.com on 2017-08-21.
@@ -25,36 +26,38 @@ It uses the configuration file install.yaml!
 USAGE
 
 positional arguments:
-  component      environment/server/webapplication/database
+  {environment,server,webapplication,database}
 
 optional arguments:
-  -h, --help     show this help message and exit
-  -v, --verbose  set verbosity level [default: None]
+  -h, --help            show this help message and exit
+  -v, --verbose         set verbosity level [default: None]
+  -e ENVIRONMENT, --env ENVIRONMENT
+                        Select a different config (install.{environment}.yaml)
 ```
 
-## Run the DEMO with docker-compose
+## Deployment
 
-1. Download the docker compose file
+1. Build the web application for production. See: https://github.com/ArPIHomeSecurity/arpi_webapplication
 
-```
-wget https://raw.githubusercontent.com/ArPIHomeSecurity/arpi_management/master/docker/ArPI.yml
-```
+2. Deploy the database
 
-2. Run the application with docker-compose
-
-```
-# pull the images
-docker-compose -f docker/ArPI.yml pull
-# start up the database first
-docker-compose -p ArPI -f docker/ArPI.yml up -d database
-# start the system
-docker-compose -p ArPI -f docker/ArPI.yml up
+```bash
+ROOT_PATH=$(pwd) python install.py -v environment
 ```
 
-3. Open the application in your browser
+3. Deploy the database
 
-[ArPI](http://localhost:8080)
+```bash
+ROOT_PATH=$(pwd) python install.py -v database
+```
 
-<a href="https://www.paypal.me/gkovacs81/">
-  <img alt="Support via PayPal" src="https://cdn.rawgit.com/twolfson/paypal-github-button/1.0.0/dist/button.svg"/>
-</a>
+4. Deploy the server
+```bash
+ROOT_PATH=$(pwd) python install.py -v server
+```
+
+5. Deploy the web application
+
+```bash
+ROOT_PATH=$(pwd) python install.py -v webapplication
+```
