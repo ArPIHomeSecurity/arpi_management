@@ -43,7 +43,15 @@ uploaded_files = set()
 
 def progress(filename, size, sent):
     uploaded_files.add(filename.decode("utf-8"))
-    print("%s: %s/%s" % (filename, size, sent), end="\r")
+    print(("%s: %s/%s => %2d%%" % (filename.decode("utf-8"), size, sent, 100*sent/size)).ljust(100), end="\r")
+
+
+def list_copy(ssh, files):
+    scp = SCPClient(ssh.get_transport(), progress=progress)
+
+    for source, target in files:
+        print("Copying %s to %s" % (source, join(target, source.split("/")[-1])))
+        scp.put(source, remote_path=target)
 
 
 def deep_copy(ssh, source, target, filter):
@@ -56,7 +64,7 @@ def deep_copy(ssh, source, target, filter):
         if os.path.isfile(fullfilename):
             filename = fullfilename.split("/")[-1]
             directories = fullfilename.split(source + "/")[1].rsplit(filename)[0]
-            print("Copying %s from %s to %s" % (filename, fullfilename, join(target, directories, filename)))
+            print("Copying %s to %s" % (fullfilename, join(target, directories, filename)))
             # print("Directories: %s" % directories)
             # print("Source: %s" % source)
             # print("Target: %s" % target)

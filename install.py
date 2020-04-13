@@ -2,7 +2,7 @@
 # encoding: utf-8
 """
 
-Script for installing the components of the arpi security system to a running Raspberry PI Zero Wifi host.
+Script for installing the components of the ArPI home security system to a running Raspberry PI Zero Wifi host.
 It uses the configuration file install.yaml!
 
 ---
@@ -15,20 +15,19 @@ It uses the configuration file install.yaml!
 """
 import logging
 import sys
-
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from os.path import join
 from pprint import pformat
 from socket import gaierror
 
 import paramiko
 import yaml
-
-from argparse import ArgumentParser
-from argparse import RawDescriptionHelpFormatter
-from paramiko.ssh_exception import NoValidConnectionsError, AuthenticationException
+from paramiko.ssh_exception import (AuthenticationException,
+                                    NoValidConnectionsError)
 from scp import SCPClient
 
-from utils import print_ssh_output, deep_copy, progress, uploaded_files, print_lines
+from utils import (deep_copy, list_copy, print_lines, print_ssh_output,
+                   progress, uploaded_files)
 
 CONFIG = {}
 
@@ -62,6 +61,9 @@ def get_connection():
 
 
 def install_environment():
+    """
+    Install prerequisites to an empty Raspberry PI.
+    """
     ssh = get_connection()
 
     # create the env variables string because paramiko update_evironment ignores them
@@ -89,28 +91,34 @@ def install_environment():
 
 
 def install_server():
+    """
+    Install the server component to a Raspberry PI.
+    """
     ssh = get_connection()
-    scp = SCPClient(ssh.get_transport(), progress=progress)
-
-    logger.info("Create server directories...")
+    logger.info("Creating server directories...")
     _, stdout, stderr = ssh.exec_command("mkdir -p  server/scripts; mkdir -p server/etc; mkdir -p server/webapplication")
     print_ssh_output(stdout, stderr)
 
-    scp.put(join(CONFIG["server_path"], "requirements.txt"), remote_path="server")
-    scp.put(join(CONFIG["server_path"], "scripts/update_database_data.sh"), remote_path="server/scripts")
-    scp.put(join(CONFIG["server_path"], "scripts/update_database_struct.sh"), remote_path="server/scripts")
-    scp.put(join(CONFIG["server_path"], "scripts/start_monitor.sh"), remote_path="server/scripts")
-    scp.put(join(CONFIG["server_path"], "scripts/stop_monitor.sh"), remote_path="server/scripts")
-    scp.put(join(CONFIG["server_path"], "scripts/start_server.sh"), remote_path="server/scripts")
-    scp.put(join(CONFIG["server_path"], "scripts/install.sh"), remote_path="server/scripts")
-    scp.put(join(CONFIG["server_path"], "etc/common.prod.env"), remote_path="server/etc")
-    scp.put(join(CONFIG["server_path"], "etc/server.prod.env"), remote_path="server/etc")
-    scp.put(join(CONFIG["server_path"], "etc/monitor.prod.env"), remote_path="server/etc")
-    scp.put(join(CONFIG["server_path"], "etc/secrets.env"), remote_path="server/etc")
+    list_copy(ssh, (
+        (join(CONFIG["server_path"], "requirements.txt"), "server"),
+        (join(CONFIG["server_path"], "scripts/update_database_data.sh"), "server/scripts"),
+        (join(CONFIG["server_path"], "scripts/update_database_struct.sh"), "server/scripts"),
+        (join(CONFIG["server_path"], "scripts/start_monitor.sh"), "server/scripts"),
+        (join(CONFIG["server_path"], "scripts/stop_monitor.sh"), "server/scripts"),
+        (join(CONFIG["server_path"], "scripts/start_server.sh"), "server/scripts"),
+        (join(CONFIG["server_path"], "scripts/install.sh"), "server/scripts"),
+        (join(CONFIG["server_path"], "etc/common.prod.env"), "server/etc"),
+        (join(CONFIG["server_path"], "etc/server.prod.env"), "server/etc"),
+        (join(CONFIG["server_path"], "etc/monitor.prod.env"), "server/etc"),
+        (join(CONFIG["server_path"], "etc/secrets.env"), "server/etc")
+    ))
+    logger.debug("%-80s\n%s", "Files copied:", pformat(uploaded_files))
+    uploaded_files.clear()
 
     deep_copy(ssh, join(CONFIG["server_path"], "src"), join("server", "src"), "**/*.py")
 
-    logger.info("Files:\n%s" % pformat(uploaded_files))
+    logger.debug("Files:\n%s" % pformat(uploaded_files))
+    uploaded_files.clear()
 
     logger.info("Starting install script...")
     _, stdout, stderr = ssh.exec_command("cd server; source ./etc/common.prod.env; ./scripts/install.sh")
@@ -120,6 +128,9 @@ def install_server():
 
 
 def install_database():
+    """
+    Install the database component to a Raspberry PI.
+    """
     ssh = get_connection()
 
     logger.info("Updating database structure...")
@@ -134,6 +145,9 @@ def install_database():
 
 
 def install_webapplication():
+    """
+    Install the web application component to a Raspberry PI.
+    """
     ssh = get_connection()
 
     logger.info("Delete old webapplication on remote site...")
@@ -141,13 +155,14 @@ def install_webapplication():
     print_ssh_output(stdout, stderr)
 
     scp = SCPClient(ssh.get_transport(), progress=progress)
-    scp.put(join(CONFIG["webapplication_path"] + "-en"), remote_path=join("server", "webapplication"), recursive=True)
+    scp.put(join(CONFIG["webapplication_path"]), remote_path=join("server", "webapplication"), recursive=True)
     logger.info("Files: %s" % pformat(uploaded_files))
     uploaded_files.clear()
 
     scp = SCPClient(ssh.get_transport(), progress=progress)
-    scp.put(join(CONFIG["webapplication_path"] + "-hu"), remote_path=join("server", "webapplication", "hu"), recursive=True)
+    scp.put(join(CONFIG["webapplication_path"], "hu"), remote_path=join("server", "webapplication", "hu"), recursive=True)
     logger.info("Files: %s" % pformat(uploaded_files))
+    uploaded_files.clear()
 
 
 def main(argv=None):  # IGNORE:C0111
