@@ -54,9 +54,14 @@ echo "# Create database"
 sudo su -c "createdb -E UTF8 -e $ARGUS_DB_SCHEMA" postgres
 
 # RTC
+# based on https://www.abelectronics.co.uk/kb/article/30/rtc-pi-on-raspbian-buster-and-stretch
 sudo apt-get install -y i2c-tools
-#sudo i2cdetect -y 1
+sudo i2cdetect -y 1
 sudo bash -c "echo ds1307 0x68 > /sys/class/i2c-adapter/i2c-1/new_device"
+echo "dtoverlay=i2c-rtc,ds1307" | sudo tee -a /boot/config.txt
+echo "rtc-ds1307" | sudo tee -a /etc/modules
+sudo cp /tmp/etc/cron/hwclock /etc/cron.d/
+sudo chmod 644 /etc/cron.d/hwclock
 
 # GSM
 # disable console on serial ports
@@ -64,7 +69,9 @@ sudo systemctl stop serial-getty@ttyAMA0.service
 sudo systemctl disable serial-getty@ttyAMA0.service
 sudo systemctl stop serial-getty@ttyS0.service
 sudo systemctl disable serial-getty@ttyS0.service
-
+# Enable serial port
+sudo systemctl stop hciuart
+sudo systemctl disable hciuart
 
 printf "\n\n#### NGINX ####\n"
 echo "# Download"
@@ -117,15 +124,13 @@ sudo apt-get -y install \
 # SYSTEMD configuration
 sudo cp -r /tmp/etc/systemd/* /etc/systemd/system/
 sudo systemctl daemon-reload
+
 # only enable services if the python virtualenv is installed (otherwise after reboot the service will start to install it with sudo)
 # sudo systemctl enable nginx.service argus_server.service argus_monitor.service
 
+# configuring the /run/argus temporary folder to create after every reboot
 echo "# Type Path                     Mode    UID     GID     Age     Argument" | sudo tee /usr/lib/tmpfiles.d/argus.conf
 echo "d /run/argus 0755 argus argus" | sudo tee /usr/lib/tmpfiles.d/argus.conf
-
-# Enable serial port to GSM module
-sudo systemctl stop hciuart
-sudo systemctl disable hciuart
 
 # Setup hostname
 echo "Change hostname"
