@@ -8,7 +8,13 @@ printenv
 
 export DEBIAN_FRONTEND=noninteractive
 
-printf "\n\n#### USER ####\n"
+# Sytem update
+print "\n\n# Updating the system"
+sudo apt-get update
+sudo apt-get -y upgrade
+sudo apt-get -y autoremove
+
+printf "\n\n# User argus"
 # Setup user with password
 if ! id -u argus; then
   echo "# Creating user"
@@ -17,35 +23,17 @@ if ! id -u argus; then
   echo "argus ALL=(ALL) NOPASSWD: ALL" | sudo tee -a /etc/sudoers
 
   echo "# Install oh my zsh for argus"
-  sudo apt-get update
-  sudo apt-get -y upgrade
-  sudo apt-get -y autoremove
   sudo apt-get -y install zsh curl git
   sudo su -c "git clone https://github.com/robbyrussell/oh-my-zsh.git ~/.oh-my-zsh" argus
   sudo su -c "cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc" argus
   sudo chsh -s /bin/zsh argus
 
-  echo "# Install certbot"
-  sudo su -c "wget -P /home/argus/ https://dl.eff.org/certbot-auto" argus
-  sudo su -c "chmod a+x /home/argus/certbot-auto" argus
-  sudo su -c "/home/argus/certbot-auto -q help" argus
-  sudo apt-get -y install \
-    augeas-lenses \
-    ca-certificates \
-    libaugeas0 \
-    libffi-dev \
-    libpython-dev \
-    libpython2.7 \
-    libpython2.7-dev \
-    python-dev \
-    python2.7-dev
-
   # create ssh keys for git access
   # ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa
 fi
 
-
-printf "\n\n#### DATABASE ####\n"
+# DATABASE
+printf "\n\n# Database install"
 echo "# Install postgres"
 sudo apt-get install -y postgresql
 echo "# Configure access"
@@ -53,8 +41,16 @@ sudo su -c "psql -c \"CREATE USER $ARGUS_DB_USERNAME WITH PASSWORD '$ARGUS_DB_PA
 echo "# Create database"
 sudo su -c "createdb -E UTF8 -e $ARGUS_DB_SCHEMA" postgres
 
+# CERTBOT
+print "\n\n# Install certbot"
+wget https://dl.eff.org/certbot-auto
+sudo mv certbot-auto /usr/local/bin/certbot-auto
+sudo chown root /usr/local/bin/certbot-auto
+sudo chmod 0755 /usr/local/bin/certbot-auto
+
 # RTC
 # based on https://www.abelectronics.co.uk/kb/article/30/rtc-pi-on-raspbian-buster-and-stretch
+print "\n\n# Install RTC - DS1307"
 sudo apt-get install -y i2c-tools
 sudo i2cdetect -y 1
 sudo bash -c "echo ds1307 0x68 > /sys/class/i2c-adapter/i2c-1/new_device"
@@ -64,6 +60,7 @@ sudo cp /tmp/etc/cron/hwclock /etc/cron.d/
 sudo chmod 644 /etc/cron.d/hwclock
 
 # GSM
+print "\n\n# Install GSM"
 # disable console on serial ports
 sudo systemctl stop serial-getty@ttyAMA0.service
 sudo systemctl disable serial-getty@ttyAMA0.service
@@ -73,6 +70,7 @@ sudo systemctl disable serial-getty@ttyS0.service
 sudo systemctl stop hciuart
 sudo systemctl disable hciuart
 
+# NGINX installation
 printf "\n\n#### NGINX ####\n"
 echo "# Download"
 mkdir ~/nginx_build
@@ -111,7 +109,6 @@ sudo mkdir -p /usr/local/nginx/conf/ssl
 sudo mv -t /usr/local/nginx/conf/ssl/ arpi_dhparam.pem arpi.local.key arpi.local.cert
 sudo chown -R www-data:www-data /usr/local/nginx/conf/ssl
 cd ~
-
 
 # COMMON
 sudo apt-get -y install \
