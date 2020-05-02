@@ -1,6 +1,15 @@
 # ArPI Home Security system - build tools
 
-## Manage Argus components
+## Getting the source
+
+```bash
+git clone --recurse-submodules https://github.com/ArPIHomeSecurity/arpi_management.git
+```
+This command will download the management project of the ArPI Home security system with the server and the webapplication components.
+
+## Manage the software components
+
+You need to install [python3](https://www.python.org/downloads/) and [pipenv](https://pypi.org/project/pipenv/) first!
 
 1. Create the python environment
 ```bash
@@ -10,12 +19,11 @@ pipenv install
 ```bash
 pipenv shell
 ```
-3. Use install script
+3. Use install script for deploying your the software components to a live instance
 
 
 ```
-usage: install.py [-h] [-v] [-e ENVIRONMENT]
-                  {environment,server,webapplication,database}
+usage: install.py [-h] [-v] [-e ENVIRONMENT] {environment,server,webapplication,database}
 
 Script for installing the components of the ArPI home security system to a running Raspberry PI Zero Wifi host.
 It uses the configuration file install.yaml!
@@ -39,11 +47,12 @@ optional arguments:
 
 1. Build the web application for production. See: https://github.com/ArPIHomeSecurity/arpi_webapplication
 
-2. Deploy the database
+2. Deploy the environment
 
 ```bash
 ROOT_PATH=$(pwd) python install.py -v environment
 ```
+After installing the environment the host will be restarted automatically!
 
 3. Deploy the database
 
