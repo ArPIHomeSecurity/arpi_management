@@ -5,6 +5,7 @@ default_hostname: raspberrypi.local
 
 # access of the installed argus user
 arpi_username : 
+arpi_key_name : 
 arpi_password : 
 arpi_hostname : 
 

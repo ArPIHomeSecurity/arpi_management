@@ -7,10 +7,10 @@ Created on 2017. aug. 27.
 import glob
 import os.path
 import subprocess
+from os import listdir, path
+from os.path import exists, isfile, join
 
-from os import listdir
-from os.path import isfile, join
-
+import paramiko
 from scp import SCPClient
 
 
@@ -78,3 +78,13 @@ def get_repository_version(path):
     branch = subprocess.check_output(["git", "-C", path, "rev-parse", "--abbrev-ref", "HEAD"]).strip().decode("utf-8")
     commit = subprocess.check_output(["git", "-C", path, "rev-parse", "HEAD"]).strip().decode("utf-8")[0:7]
     return "{}-{}".format(branch, commit)
+
+
+def generate_SSH_key(key_name, passphrase):
+    key = paramiko.RSAKey.generate(4096)
+    key.write_private_key_file(key_name, password=passphrase)
+
+    with open(key_name+".pub", "w") as public_key:
+        public_key.write("%s %s" % (key.get_name(), key.get_base64()))
+
+    public_key.close()

@@ -14,9 +14,11 @@ It uses the configuration file install.yaml!
 @contact:    gkovacs81@gmail.com
 """
 import logging
+import subprocess
 import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from os.path import join
+from os import path
+from os.path import exists, join
 from pprint import pformat
 from socket import gaierror
 
@@ -26,8 +28,8 @@ from paramiko.ssh_exception import (AuthenticationException,
                                     NoValidConnectionsError)
 from scp import SCPClient
 
-from utils import (deep_copy, list_copy, print_lines, print_ssh_output,
-                   progress, uploaded_files)
+from utils import (deep_copy, generate_SSH_key, list_copy, print_lines,
+                   print_ssh_output, progress, uploaded_files)
 
 CONFIG = {}
 
@@ -43,13 +45,18 @@ __updated__ = "2019-08-21"
 
 def get_connection():
     try:
-        logger.info("Connecting %s@%s", CONFIG["arpi_username"], CONFIG["arpi_hostname"])
+        logger.info("Connecting with private key in '%s' %s@%s", CONFIG['arpi_key_name'], CONFIG["arpi_username"], CONFIG["arpi_hostname"])
+
+        private_key = None
+        if path.exists(CONFIG['arpi_key_name']):
+            private_key = paramiko.RSAKey.from_private_key_file(CONFIG['arpi_key_name'], CONFIG['arpi_password'])
+
         ssh = paramiko.SSHClient()
         ssh.load_system_host_keys()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(CONFIG["arpi_hostname"], username=CONFIG["arpi_username"], password=CONFIG["arpi_password"])
+        ssh.connect(CONFIG["arpi_hostname"], username=CONFIG["arpi_username"], password=CONFIG["arpi_password"], pkey=private_key)
         logger.info("Connected")
-    except (AuthenticationException, NoValidConnectionsError, gaierror):
+    except (AuthenticationException, NoValidConnectionsError, gaierror) as error:
         try:
             logger.info("Connecting %s@%s", CONFIG["default_username"], CONFIG["default_hostname"])
             ssh.connect(CONFIG["default_hostname"], username=CONFIG["default_username"], password=CONFIG["default_password"])
@@ -64,6 +71,9 @@ def install_environment():
     """
     Install prerequisites to an empty Raspberry PI.
     """
+    if not path.exists(CONFIG['arpi_key_name']) and not path.exists(CONFIG['arpi_key_name'] + ".pub"):
+        generate_SSH_key(CONFIG['arpi_key_name'], CONFIG['arpi_password'])
+
     ssh = get_connection()
 
     # create the env variables string because paramiko update_evironment ignores them
@@ -88,6 +98,15 @@ def install_environment():
     channel.exec_command(f"{arguments}; ./install_environment.sh")
     print_lines(output)
     ssh.close()
+
+    command = "ssh-copy-id -i %s %s@%s" % (CONFIG['arpi_key_name'], 'arpi_username', 'arpi_hostname')
+    logger.info("Deploy public key: %s", command)
+    subprocess.call(command, shell=True)
+
+    ssh = get_connection()
+    logger.info("Enabling key based ssh authentication")
+    _, stdout, stderr = ssh.exec_command("sudo sed -i -E -e 's/.*PasswordAuthentication (yes|no)/PasswordAuthentication no/g' /etc/ssh/sshd_config && sudo systemctl restart ssh.service")
+    print_ssh_output(stdout, stderr)
 
 
 def install_server():
@@ -229,6 +248,8 @@ USAGE
     except Exception:
         logger.exception("Failed to execute!")
         return 2
+
+    logger.info("Finished successfully!")
 
 
 if __name__ == "__main__":
