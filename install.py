@@ -161,11 +161,11 @@ def install_database():
     ssh = get_connection()
 
     logger.info("Updating database structure...")
-    _, stdout, stderr = ssh.exec_command("cd server; ./scripts/update_database_struct.sh prod")
+    _, stdout, stderr = ssh.exec_command(f"cd server; ./scripts/update_database_struct.sh {CONFIG['argus_db_environment']}")
     print_ssh_output(stdout, stderr)
 
     logger.info("Updating database content...")
-    _, stdout, stderr = ssh.exec_command("cd server; ./scripts/update_database_data.sh prod prod")
+    _, stdout, stderr = ssh.exec_command(f"cd server; ./scripts/update_database_data.sh {CONFIG['argus_db_environment']} {CONFIG['argus_db_content']}")
     print_ssh_output(stdout, stderr)
 
     ssh.close()
