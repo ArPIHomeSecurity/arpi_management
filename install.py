@@ -181,15 +181,18 @@ def install_webapplication():
     _, stdout, stderr = ssh.exec_command("rm -R server/webapplication || true")
     print_ssh_output(stdout, stderr)
 
-    scp = SCPClient(ssh.get_transport(), progress=progress)
-    scp.put(join(CONFIG["webapplication_path"]), remote_path=join("server", "webapplication"), recursive=True)
-    logger.info("Files: %s" % pformat(uploaded_files))
-    uploaded_files.clear()
+    for idx, language in enumerate(CONFIG['languages']):
+        target = ''
+        if idx > 0:
+            target = join("server", "webapplication", language)
+        else:
+            target = join("server", "webapplication")
 
-    scp = SCPClient(ssh.get_transport(), progress=progress)
-    scp.put(join(CONFIG["webapplication_path"], "hu"), remote_path=join("server", "webapplication", "hu"), recursive=True)
-    logger.info("Files: %s" % pformat(uploaded_files))
-    uploaded_files.clear()
+        logger.info("Target: %s, %s - %s", idx, target, language)
+        scp = SCPClient(ssh.get_transport(), progress=progress)
+        scp.put(join(CONFIG["webapplication_path"]), remote_path=target, recursive=True)
+        logger.info("Files: %s" % pformat(uploaded_files))
+        uploaded_files.clear()
 
 
 def main(argv=None):  # IGNORE:C0111

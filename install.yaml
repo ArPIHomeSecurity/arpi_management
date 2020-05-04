@@ -20,5 +20,5 @@ argus_db_content :
 server_path: server
 webapplication_path: webapplication/dist-production
 languages:
-   -en
-   -hu
+  - en
+  - hu
