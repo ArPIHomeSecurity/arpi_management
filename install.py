@@ -99,13 +99,21 @@ def install_environment():
     print_lines(output)
     ssh.close()
 
-    command = "ssh-copy-id -i %s %s@%s" % (CONFIG['arpi_key_name'], 'arpi_username', 'arpi_hostname')
+    # waiting for user
+    # 1. deploy key can timeout
+    # 2. ssh accept password only from terminal
+    input(f"Waiting before deploying public key. Use the password: '{CONFIG['arpi_password']}'!")
+    command = f"ssh-copy-id -i {CONFIG['arpi_key_name']} {CONFIG['arpi_username']}@{CONFIG['arpi_hostname']}"
     logger.info("Deploy public key: %s", command)
     subprocess.call(command, shell=True)
 
     ssh = get_connection()
     logger.info("Enabling key based ssh authentication")
-    _, stdout, stderr = ssh.exec_command("sudo sed -i -E -e 's/.*PasswordAuthentication (yes|no)/PasswordAuthentication no/g' /etc/ssh/sshd_config && sudo systemctl restart ssh.service")
+    _, stdout, stderr = ssh.exec_command("sudo sed -i -E -e 's/.*PasswordAuthentication (yes|no)/PasswordAuthentication no/g' /etc/ssh/sshd_config")
+    print_ssh_output(stdout, stderr)
+
+    logger.info("Restarting the host")
+    _, stdout, stderr = ssh.exec_command("sudo reboot")
     print_ssh_output(stdout, stderr)
 
 
@@ -156,8 +164,8 @@ def install_database():
     _, stdout, stderr = ssh.exec_command("cd server; ./scripts/update_database_struct.sh prod")
     print_ssh_output(stdout, stderr)
 
-    logger.info("Reseting database content...")
-    _, stdout, stderr = ssh.exec_command("cd server; ./scripts/reset_database.sh prod")
+    logger.info("Updating database content...")
+    _, stdout, stderr = ssh.exec_command("cd server; ./scripts/update_database_data.sh prod prod")
     print_ssh_output(stdout, stderr)
 
     ssh.close()

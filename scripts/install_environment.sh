@@ -133,4 +133,3 @@ echo "d /run/argus 0755 argus argus" | sudo tee /usr/lib/tmpfiles.d/argus.conf
 echo "Change hostname"
 echo "arpi.local" | sudo tee /etc/hostname
 
-sudo reboot
