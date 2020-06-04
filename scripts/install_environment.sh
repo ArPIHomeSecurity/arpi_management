@@ -23,7 +23,7 @@ if ! id -u argus; then
   echo "argus ALL=(ALL) NOPASSWD: ALL" | sudo tee -a /etc/sudoers
 
   echo "# Install oh my zsh for argus"
-  sudo apt-get -y install zsh curl git
+  sudo apt-get -y install zsh curl git vim
   sudo su -c "git clone https://github.com/robbyrussell/oh-my-zsh.git ~/.oh-my-zsh" argus
   sudo su -c "cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc" argus
   sudo chsh -s /bin/zsh argus
@@ -66,6 +66,7 @@ sudo systemctl stop serial-getty@ttyAMA0.service
 sudo systemctl disable serial-getty@ttyAMA0.service
 sudo systemctl stop serial-getty@ttyS0.service
 sudo systemctl disable serial-getty@ttyS0.service
+sudo sed -i 's/console=serial0,115200 //g' /boot/cmdline.txt
 # Enable serial port
 sudo systemctl stop hciuart
 sudo systemctl disable hciuart
@@ -132,4 +133,3 @@ echo "d /run/argus 0755 argus argus" | sudo tee /usr/lib/tmpfiles.d/argus.conf
 # Setup hostname
 echo "Change hostname"
 echo "arpi.local" | sudo tee /etc/hostname
-
