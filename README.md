@@ -15,13 +15,13 @@ You need to install [python3](https://www.python.org/downloads/) and [pipenv](ht
 ```bash
 pipenv install
 ```
+
 2. Activate the python environment
 ```bash
 pipenv shell
 ```
+
 3. Use install script for deploying your the software components to a live instance
-
-
 ```
 usage: install.py [-h] [-v] [-e ENVIRONMENT] {environment,server,webapplication,database}
 
@@ -49,24 +49,30 @@ optional arguments:
 
 2. Deploy the environment
 
+This method can only be used once to install the prerequisities.
 ```bash
-ROOT_PATH=$(pwd) python install.py -v environment
+python install.py -v environment
 ```
+At the end of the install a manual action required for giving the password!
 After installing the environment the host will be restarted automatically!
 
-3. Deploy the database
+3. Deploy the server
 
+This method can be reused for updating the server component.
 ```bash
-ROOT_PATH=$(pwd) python install.py -v database
+python install.py -v server
 ```
 
-4. Deploy the server
+4. Deploy the database
+
+This method can be reused for updating the database component.
 ```bash
-ROOT_PATH=$(pwd) python install.py -v server
+python install.py -v database
 ```
 
 5. Deploy the web application
 
+This method can be reused for updating the web application component.
 ```bash
-ROOT_PATH=$(pwd) python install.py -v webapplication
+python install.py -v webapplication
 ```
