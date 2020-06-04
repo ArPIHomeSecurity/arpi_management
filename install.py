@@ -18,9 +18,10 @@ import subprocess
 import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from os import path
-from os.path import exists, join
+from os.path import join
 from pprint import pformat
 from socket import gaierror
+from time import sleep
 
 import paramiko
 import yaml
@@ -56,7 +57,7 @@ def get_connection():
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(CONFIG["arpi_hostname"], username=CONFIG["arpi_username"], password=CONFIG["arpi_password"], pkey=private_key)
         logger.info("Connected")
-    except (AuthenticationException, NoValidConnectionsError, gaierror) as error:
+    except (AuthenticationException, NoValidConnectionsError, gaierror):
         try:
             logger.info("Connecting %s@%s", CONFIG["default_username"], CONFIG["default_hostname"])
             ssh.connect(CONFIG["default_hostname"], username=CONFIG["default_username"], password=CONFIG["default_password"])
@@ -105,7 +106,9 @@ def install_environment():
     input(f"Waiting before deploying public key. Use the password: '{CONFIG['arpi_password']}'!")
     command = f"ssh-copy-id -i {CONFIG['arpi_key_name']} {CONFIG['arpi_username']}@{CONFIG['arpi_hostname']}"
     logger.info("Deploy public key: %s", command)
-    subprocess.call(command, shell=True)
+    while subprocess.call(command, shell=True) != 0:
+        # retry after 2 seconds
+        sleep(2)
 
     ssh = get_connection()
     logger.info("Enabling key based ssh authentication")
