@@ -19,7 +19,7 @@ printf "\n\n# User argus"
 if ! id -u argus; then
   echo "# Creating user"
   sudo useradd -G sudo -m argus
-  echo "argus:argus1" | sudo chpasswd
+  echo "argus:$ARPI_PASSWORD" | sudo chpasswd
   echo "argus ALL=(ALL) NOPASSWD: ALL" | sudo tee -a /etc/sudoers
 
   echo "# Install oh my zsh for argus"

@@ -79,6 +79,7 @@ def install_environment():
 
     # create the env variables string because paramiko update_evironment ignores them
     arguments = {
+        "ARPI_PASSWORD": CONFIG["arpi_password"],
         "ARGUS_DB_SCHEMA": CONFIG["argus_db_schema"],
         "ARGUS_DB_USERNAME": CONFIG["argus_db_username"],
         "ARGUS_DB_PASSWORD": CONFIG["argus_db_password"],
@@ -103,8 +104,8 @@ def install_environment():
     # waiting for user
     # 1. deploy key can timeout
     # 2. ssh accept password only from terminal
-    input(f"Waiting before deploying public key. Use the password: '{CONFIG['arpi_password']}'!")
-    command = f"ssh-copy-id -i {CONFIG['arpi_key_name']} {CONFIG['arpi_username']}@{CONFIG['arpi_hostname']}"
+    input("Waiting before deploying public key!")
+    command = f"ssh-copy-id -i {CONFIG['arpi_key_name']} {CONFIG['default_username']}@{CONFIG['default_hostname']}"
     logger.info("Deploy public key: %s", command)
     while subprocess.call(command, shell=True) != 0:
         # retry after 2 seconds
@@ -246,6 +247,7 @@ USAGE
             global CONFIG
             CONFIG = yaml.load(stream, Loader=yaml.FullLoader)
             logger.info("Working with configuration: \n%s", pformat(CONFIG))
+            input("Waiting before starting the installation to verify the configuration!")
 
         if args.component == "environment":
             install_environment()
