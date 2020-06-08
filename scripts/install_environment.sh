@@ -67,6 +67,13 @@ sudo systemctl disable serial-getty@ttyAMA0.service
 sudo systemctl stop serial-getty@ttyS0.service
 sudo systemctl disable serial-getty@ttyS0.service
 sudo sed -i 's/console=serial0,115200 //g' /boot/cmdline.txt
+echo "" | sudo tee -a /boot/config.txt
+echo "# Enable UART" | sudo tee -a /boot/config.txt
+echo "enable_uart=1" | sudo tee -a /boot/config.txt
+echo "dtoverlay=uart0" | sudo tee -a /boot/config.txt
+echo "dtoverlay=pi3-disable-bt" | sudo tee -a /boot/config.txt
+echo "dtoverlay=pi3-miniuart-bt" | sudo tee -a /boot/config.txt
+
 # Enable serial port
 sudo systemctl stop hciuart
 sudo systemctl disable hciuart
