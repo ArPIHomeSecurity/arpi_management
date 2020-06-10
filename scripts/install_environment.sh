@@ -9,7 +9,7 @@ printenv
 export DEBIAN_FRONTEND=noninteractive
 
 # Sytem update
-print "\n\n# Updating the system"
+printf "\n\n# Updating the system"
 sudo apt-get update
 sudo apt-get -y upgrade
 sudo apt-get -y autoremove
@@ -42,7 +42,7 @@ echo "# Create database"
 sudo su -c "createdb -E UTF8 -e $ARGUS_DB_SCHEMA" postgres
 
 # CERTBOT
-print "\n\n# Install certbot"
+printf "\n\n# Install certbot"
 wget https://dl.eff.org/certbot-auto
 sudo mv certbot-auto /usr/local/bin/certbot-auto
 sudo chown root /usr/local/bin/certbot-auto
@@ -55,7 +55,7 @@ sudo /usr/local/bin/certbot-auto --noninteractive
 
 # RTC
 # based on https://www.abelectronics.co.uk/kb/article/30/rtc-pi-on-raspbian-buster-and-stretch
-print "\n\n# Install RTC - DS1307"
+printf "\n\n# Install RTC - DS1307"
 sudo apt-get install -y i2c-tools
 sudo i2cdetect -y 1
 sudo bash -c "echo ds1307 0x68 > /sys/class/i2c-adapter/i2c-1/new_device"
@@ -65,7 +65,7 @@ sudo cp /tmp/etc/cron/hwclock /etc/cron.d/
 sudo chmod 644 /etc/cron.d/hwclock
 
 # GSM
-print "\n\n# Install GSM"
+printf "\n\n# Install GSM"
 # disable console on serial ports
 sudo systemctl stop serial-getty@ttyAMA0.service
 sudo systemctl disable serial-getty@ttyAMA0.service
