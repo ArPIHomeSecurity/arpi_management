@@ -105,7 +105,7 @@ def install_environment():
     # 1. deploy key can timeout
     # 2. ssh accept password only from terminal
     input("Waiting before deploying public key!")
-    command = f"ssh-copy-id -i {CONFIG['arpi_key_name']} {CONFIG['default_username']}@{CONFIG['default_hostname']}"
+    command = f"ssh-copy-id -i {CONFIG['arpi_key_name']} {CONFIG['arpi_username']}@{CONFIG['default_hostname']}"
     logger.info("Deploy public key: %s", command)
     while subprocess.call(command, shell=True) != 0:
         # retry after 2 seconds
