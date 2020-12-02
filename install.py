@@ -9,7 +9,7 @@ It uses the configuration file install.yaml!
 
 @author:     Gábor Kovács
 
-@copyright:  2017 argus-security.info. All rights reserved.
+@copyright:  2017 arpi-security.info. All rights reserved.
 
 @contact:    gkovacs81@gmail.com
 """
@@ -132,6 +132,7 @@ def install_server():
 
     list_copy(ssh, (
         (join(CONFIG["server_path"], "requirements.txt"), "server"),
+        (join(CONFIG["server_path"], "scripts/hash.sh"), "server/scripts"),
         (join(CONFIG["server_path"], "scripts/update_database_data.sh"), "server/scripts"),
         (join(CONFIG["server_path"], "scripts/update_database_struct.sh"), "server/scripts"),
         (join(CONFIG["server_path"], "scripts/start_monitor.sh"), "server/scripts"),
