@@ -17,12 +17,12 @@ sudo apt-get -y autoremove
 printf "\n\n# User argus"
 # Setup user with password
 if ! id -u argus; then
-  echo "# Creating user"
+  echo "## Creating user"
   sudo useradd -G sudo -m argus
   echo "argus:$ARPI_PASSWORD" | sudo chpasswd
   echo "argus ALL=(ALL) NOPASSWD: ALL" | sudo tee -a /etc/sudoers
 
-  echo "# Install oh my zsh for argus"
+  echo "## Install oh my zsh for argus"
   sudo apt-get -y install zsh curl git vim
   sudo su -c "git clone https://github.com/robbyrussell/oh-my-zsh.git ~/.oh-my-zsh" argus
   sudo su -c "cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc" argus
@@ -83,23 +83,23 @@ sudo systemctl stop hciuart
 sudo systemctl disable hciuart
 
 # NGINX installation
-printf "\n\n#### NGINX ####\n"
-echo "# Download"
+printf "\n\n# Install NGINX"
+echo "## Download"
 mkdir ~/nginx_build
 cd ~/nginx_build
 wget http://nginx.org/download/nginx-1.19.5.tar.gz
 tar xvf nginx-1.19.5.tar.gz
 cd nginx-1.19.5
-echo "# Install prerequisite"
+echo "## Install prerequisite"
 sudo apt-get -y install \
 	build-essential \
 	libpcre3-dev \
 	libssl-dev \
 	zlib1g-dev
-echo "# Build"
+echo "## Build"
 ./configure --with-http_stub_status_module --with-http_ssl_module
 make
-echo "# Install"
+echo "## Install"
 sudo make install
 # NGINX configurations
 sudo mkdir -p /var/log/nginx
@@ -111,7 +111,7 @@ sudo ln -s /usr/local/nginx/conf/snippets/self-signed.conf /usr/local/nginx/conf
 sudo mkdir -p /usr/local/nginx/conf/sites-enabled/
 sudo ln -s /usr/local/nginx/conf/sites-available/argus.conf /usr/local/nginx/conf/sites-enabled/argus.conf
 
-echo "# Create ssl files"
+echo "## Create self signed certificate"
 openssl req -new -newkey rsa:4096 -nodes -x509 \
      -subj "/C=HU/ST=Fejér/L=Baracska/O=ArPI/CN=arpi.local" \
      -keyout arpi.local.key \
@@ -122,7 +122,8 @@ sudo mv -t /usr/local/nginx/conf/ssl/ arpi_dhparam.pem arpi.local.key arpi.local
 sudo chown -R www-data:www-data /usr/local/nginx/conf/ssl
 cd ~
 
-# COMMON
+print "\n\n# Install and configure common tools"
+echo "## Install python3 and packages"
 sudo apt-get -y install \
 	python3 \
 	python3-gpiozero \
@@ -130,17 +131,17 @@ sudo apt-get -y install \
 	python3-dev \
 	python-virtualenv
 
-# SYSTEMD configuration
+echo "## Configure systemd services"
 sudo cp -r /tmp/etc/systemd/* /etc/systemd/system/
 sudo systemctl daemon-reload
 
 # only enable services if the python virtualenv is installed (otherwise after reboot the service will start to install it with sudo)
 # sudo systemctl enable nginx.service argus_server.service argus_monitor.service
 
+echo "## Configure /run folder"
 # configuring the /run/argus temporary folder to create after every reboot
 echo "# Type Path                     Mode    UID     GID     Age     Argument" | sudo tee /usr/lib/tmpfiles.d/argus.conf
 echo "d /run/argus 0755 argus argus" | sudo tee /usr/lib/tmpfiles.d/argus.conf
 
-# Setup hostname
-echo "Change hostname"
+echo "## Setup hostname"
 echo "arpi.local" | sudo tee /etc/hostname
