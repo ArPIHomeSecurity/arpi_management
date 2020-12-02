@@ -87,9 +87,9 @@ printf "\n\n#### NGINX ####\n"
 echo "# Download"
 mkdir ~/nginx_build
 cd ~/nginx_build
-wget http://nginx.org/download/nginx-1.16.1.tar.gz
-tar xvf nginx-1.16.1.tar.gz
-cd nginx-1.16.1
+wget http://nginx.org/download/nginx-1.19.5.tar.gz
+tar xvf nginx-1.19.5.tar.gz
+cd nginx-1.19.5
 echo "# Install prerequisite"
 sudo apt-get -y install \
 	build-essential \
