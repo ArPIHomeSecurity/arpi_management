@@ -5,3 +5,5 @@ __pycache__
 /pyenv/
 
 /*_rsa*
+
+/install.*.yaml
