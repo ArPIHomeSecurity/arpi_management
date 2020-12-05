@@ -7,10 +7,12 @@ name = "pypi"
 pyyaml = "*"
 paramiko = "*"
 scp = "*"
+black = "*"
 
 [dev-packages]
 flake8 = "*"
 black = "*"
+rope = "*"
 
 [requires]
 python_version = "3"
