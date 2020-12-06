@@ -9,12 +9,12 @@ printenv
 export DEBIAN_FRONTEND=noninteractive
 
 # Sytem update
-printf "\n\n# Updating the system"
+printf "\n\n# Updating the system\n"
 sudo apt-get update
 sudo apt-get -y upgrade
 sudo apt-get -y autoremove
 
-printf "\n\n# User argus"
+printf "\n\n# User argus\n"
 # Setup user with password
 if ! id -u argus; then
   echo "## Creating user"
@@ -33,7 +33,7 @@ if ! id -u argus; then
 fi
 
 # DATABASE
-printf "\n\n# Database install"
+printf "\n\n# Database install\n"
 echo "## Install postgres"
 sudo apt-get install -y postgresql postgresql-server-dev-all
 echo "## Configure access"
@@ -42,19 +42,19 @@ echo "## Create database"
 sudo su -c "createdb -E UTF8 -e $ARGUS_DB_SCHEMA" postgres
 
 # CERTBOT
-printf "\n\n# Install certbot"
-printf "## Install snapd"
+printf "\n\n# Install certbot\n"
+echo "## Install snapd"
 sudo apt-get -y install snapd
-printf "## Update snapd"
+echo "## Update snapd"
 sudo snap install core; sudo snap refresh core
-printf "## Update certbot snapd package"
+echo "## Update certbot snapd package"
 sudo snap install certbot --classic
-printf "## Prepare the command"
+echo "## Prepare the command"
 sudo ln -s /snap/bin/certbot /usr/bin/certbot
 
 # RTC
 # based on https://www.abelectronics.co.uk/kb/article/30/rtc-pi-on-raspbian-buster-and-stretch
-printf "\n\n# Install RTC - DS1307"
+printf "\n\n# Install RTC - DS1307\n"
 sudo apt-get install -y i2c-tools
 sudo i2cdetect -y 1
 sudo bash -c "echo ds1307 0x68 > /sys/class/i2c-adapter/i2c-1/new_device"
@@ -64,7 +64,7 @@ sudo cp /tmp/etc/cron/hwclock /etc/cron.d/
 sudo chmod 644 /etc/cron.d/hwclock
 
 # GSM
-printf "\n\n# Install GSM"
+printf "\n\n# Install GSM\n"
 # disable console on serial ports
 sudo systemctl stop serial-getty@ttyAMA0.service
 sudo systemctl disable serial-getty@ttyAMA0.service
@@ -83,7 +83,7 @@ sudo systemctl stop hciuart
 sudo systemctl disable hciuart
 
 # NGINX installation
-printf "\n\n# Install NGINX"
+printf "\n\n# Install NGINX\n"
 echo "## Download"
 mkdir ~/nginx_build
 cd ~/nginx_build
