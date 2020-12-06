@@ -43,14 +43,20 @@ sudo su -c "createdb -E UTF8 -e $ARGUS_DB_SCHEMA" postgres
 
 # CERTBOT
 printf "\n\n# Install certbot\n"
-echo "## Install snapd"
-sudo apt-get -y install snapd
-echo "## Update snapd"
-sudo snap install core; sudo snap refresh core
-echo "## Update certbot snapd package"
-sudo snap install certbot --classic
-echo "## Prepare the command"
-sudo ln -s /snap/bin/certbot /usr/bin/certbot
+if ./uname -m | grep -q 'x86_64'; then
+  echo "## Install snapd"
+  sudo apt-get -y install snapd
+  echo "## Update snapd"
+  sudo snap install core; sudo snap refresh core
+  echo "## Update certbot snapd package"
+  sudo snap install certbot --classic
+  echo "## Prepare the command"
+  sudo ln -s /snap/bin/certbot /usr/bin/certbot
+elif ./uname -m | grep -q 'armv6l'; then
+  echo "## Install certbot"
+  sudo apt -y install certbot
+fi
+
 
 # RTC
 # based on https://www.abelectronics.co.uk/kb/article/30/rtc-pi-on-raspbian-buster-and-stretch
