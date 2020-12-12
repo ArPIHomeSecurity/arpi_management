@@ -193,7 +193,7 @@ def install_webapplication():
         else:
             target = join("server", "webapplication")
 
-        logger.info("Target: %s, %s - %s", idx, target, language)
+        logger.info("Target[%s]: %s => %s", idx, language, target)
         scp = SCPClient(ssh.get_transport(), progress=progress)
         scp.put(join(CONFIG["webapplication_path"]), remote_path=target, recursive=True)
         logger.info("Files: %s" % pformat(uploaded_files))
