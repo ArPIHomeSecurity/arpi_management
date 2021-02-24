@@ -7,13 +7,15 @@ name = "pypi"
 pyyaml = "*"
 paramiko = "*"
 scp = "*"
+black = "*"
 
 [dev-packages]
 flake8 = "*"
 black = "*"
+rope = "*"
 
 [requires]
-python_version = "3.7"
+python_version = "3"
 
 [pipenv]
 allow_prereleases = true
