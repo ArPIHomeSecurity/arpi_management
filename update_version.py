@@ -1,9 +1,12 @@
+#!/usr/bin/env python
+# encoding: utf-8
+
 import fileinput
 import sys
 
 from utils import get_repository_version
 
-__version__ = "V0.3.00"
+__version__ = "V0.6.00"
 
 
 def replace(filename, placeholder, value):

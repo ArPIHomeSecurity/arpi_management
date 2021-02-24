@@ -7,8 +7,8 @@ Created on 2017. aug. 27.
 import glob
 import os.path
 import subprocess
-from os import listdir, path
-from os.path import exists, isfile, join
+from os import listdir
+from os.path import isfile, join
 
 import paramiko
 from scp import SCPClient
