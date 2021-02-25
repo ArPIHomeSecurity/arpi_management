@@ -131,14 +131,14 @@ def install_server():
     print_ssh_output(stdout, stderr)
 
     list_copy(ssh, (
-        (join(CONFIG["server_path"], "requirements.txt"), "server"),
+        (join(CONFIG["server_path"], "Pipfile"), "server"),
+        (join(CONFIG["server_path"], "Pipfile.lock"), "server"),
         (join(CONFIG["server_path"], "scripts/hash.sh"), "server/scripts"),
         (join(CONFIG["server_path"], "scripts/update_database_data.sh"), "server/scripts"),
         (join(CONFIG["server_path"], "scripts/update_database_struct.sh"), "server/scripts"),
         (join(CONFIG["server_path"], "scripts/start_monitor.sh"), "server/scripts"),
         (join(CONFIG["server_path"], "scripts/stop_monitor.sh"), "server/scripts"),
         (join(CONFIG["server_path"], "scripts/start_server.sh"), "server/scripts"),
-        (join(CONFIG["server_path"], "scripts/install.sh"), "server/scripts"),
         (join(CONFIG["server_path"], "etc/common.prod.env"), "server/etc"),
         (join(CONFIG["server_path"], "etc/server.prod.env"), "server/etc"),
         (join(CONFIG["server_path"], "etc/monitor.prod.env"), "server/etc"),
@@ -152,8 +152,12 @@ def install_server():
     logger.debug("Files:\n%s" % pformat(uploaded_files))
     uploaded_files.clear()
 
-    logger.info("Starting install script...")
-    _, stdout, stderr = ssh.exec_command("cd server; source ./etc/common.prod.env; ./scripts/install.sh")
+    logger.info("Starting install script for user argus...")
+    _, stdout, stderr = ssh.exec_command("cd server; pipenv install --skip-lock")
+    print_ssh_output(stdout, stderr)
+    
+    logger.info("Starting install script for user root...")
+    _, stdout, stderr = ssh.exec_command("cd server; sudo pipenv install --skip-lock")
     print_ssh_output(stdout, stderr)
 
     ssh.close()

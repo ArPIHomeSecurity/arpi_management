@@ -13,6 +13,7 @@ printf "\n\n# Updating the system\n"
 sudo apt-get update
 sudo apt-get -y upgrade
 sudo apt-get -y autoremove
+sudo apt-get -y install pipenv
 
 printf "\n\n# User argus\n"
 # Setup user with password
@@ -43,7 +44,7 @@ sudo su -c "createdb -E UTF8 -e $ARGUS_DB_SCHEMA" postgres
 
 # CERTBOT
 printf "\n\n# Install certbot\n"
-if ./uname -m | grep -q 'x86_64'; then
+if uname -m | grep -q 'x86_64'; then
   echo "## Install snapd"
   sudo apt-get -y install snapd
   echo "## Update snapd"
@@ -52,7 +53,7 @@ if ./uname -m | grep -q 'x86_64'; then
   sudo snap install certbot --classic
   echo "## Prepare the command"
   sudo ln -s /snap/bin/certbot /usr/bin/certbot
-elif ./uname -m | grep -q 'armv6l'; then
+elif uname -m | grep -q 'armv6l'; then
   echo "## Install certbot"
   sudo apt -y install certbot
 fi
@@ -135,7 +136,12 @@ sudo apt-get -y install \
 	python3-gpiozero \
 	python3-gi \
 	python3-dev \
-	python-virtualenv
+	python-virtualenv \
+  gcc \
+  libgirepository1.0-dev \
+  libcairo2-dev \
+  pkg-config \
+  gir1.2-gtk-3.0
 
 echo "## Configure systemd services"
 sudo cp -r /tmp/etc/systemd/* /etc/systemd/system/
