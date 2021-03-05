@@ -153,11 +153,11 @@ def install_server():
     uploaded_files.clear()
 
     logger.info("Starting install script for user argus...")
-    _, stdout, stderr = ssh.exec_command("cd server; pipenv install --skip-lock")
+    _, stdout, stderr = ssh.exec_command("cd server; PIPENV_TIMEOUT=9999 pipenv install --skip-lock")
     print_ssh_output(stdout, stderr)
     
     logger.info("Starting install script for user root...")
-    _, stdout, stderr = ssh.exec_command("cd server; sudo pipenv install --skip-lock")
+    _, stdout, stderr = ssh.exec_command("cd server; sudo PIPENV_TIMEOUT=9999 pipenv install --skip-lock")
     print_ssh_output(stdout, stderr)
 
     ssh.close()
