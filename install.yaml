@@ -13,10 +13,10 @@ arpi_hostname :
 argus_db_schema : argus
 argus_db_username : argus
 argus_db_password : 
-argus_db_environment : 
 argus_db_content :
 
 # deploy settings
+environment : 
 server_path: server
 webapplication_path: webapplication/dist-production
 languages:

@@ -83,6 +83,7 @@ def install_environment():
         "ARGUS_DB_SCHEMA": CONFIG["argus_db_schema"],
         "ARGUS_DB_USERNAME": CONFIG["argus_db_username"],
         "ARGUS_DB_PASSWORD": CONFIG["argus_db_password"],
+        "ARPI_HOSTNAME": CONFIG["arpi_hostname"],
     }
     arguments = [f"export {key}={value}" for key, value in arguments.items()]
     arguments = "; ".join(arguments)
@@ -132,17 +133,7 @@ def install_server():
 
     list_copy(ssh, (
         (join(CONFIG["server_path"], "Pipfile"), "server"),
-        (join(CONFIG["server_path"], "Pipfile.lock"), "server"),
-        (join(CONFIG["server_path"], "scripts/hash.sh"), "server/scripts"),
-        (join(CONFIG["server_path"], "scripts/update_database_data.sh"), "server/scripts"),
-        (join(CONFIG["server_path"], "scripts/update_database_struct.sh"), "server/scripts"),
-        (join(CONFIG["server_path"], "scripts/start_monitor.sh"), "server/scripts"),
-        (join(CONFIG["server_path"], "scripts/stop_monitor.sh"), "server/scripts"),
-        (join(CONFIG["server_path"], "scripts/start_server.sh"), "server/scripts"),
-        (join(CONFIG["server_path"], "etc/common.prod.env"), "server/etc"),
-        (join(CONFIG["server_path"], "etc/server.prod.env"), "server/etc"),
-        (join(CONFIG["server_path"], "etc/monitor.prod.env"), "server/etc"),
-        (join(CONFIG["server_path"], "etc/secrets.env"), "server/etc")
+        (join(CONFIG["server_path"], f".env_{CONFIG['environment']}"), "server/.env")
     ))
     logger.debug("%-80s\n%s", "Files copied:", pformat(uploaded_files))
     uploaded_files.clear()
@@ -152,12 +143,16 @@ def install_server():
     logger.debug("Files:\n%s" % pformat(uploaded_files))
     uploaded_files.clear()
 
-    logger.info("Starting install script for user argus...")
-    _, stdout, stderr = ssh.exec_command("cd server; PIPENV_TIMEOUT=9999 pipenv install --skip-lock")
+    logger.info("Start installing python packages on sytem...")
+    _, stdout, stderr = ssh.exec_command("cd server; sudo PIPENV_TIMEOUT=9999 pipenv install --system --deploy --skip-lock")
     print_ssh_output(stdout, stderr)
     
-    logger.info("Starting install script for user root...")
-    _, stdout, stderr = ssh.exec_command("cd server; sudo PIPENV_TIMEOUT=9999 pipenv install --skip-lock")
+    logger.info("Create virtual environment with python3 for argus...")
+    _, stdout, stderr = ssh.exec_command("cd server; PIPENV_TIMEOUT=9999 CI=1 pipenv --site-packages")
+    print_ssh_output(stdout, stderr)
+
+    logger.info("Create virtual environment with python3 for root...")
+    _, stdout, stderr = ssh.exec_command("cd server; sudo PIPENV_TIMEOUT=9999 CI=1 pipenv --site-packages")
     print_ssh_output(stdout, stderr)
 
     ssh.close()
@@ -170,11 +165,15 @@ def install_database():
     ssh = get_connection()
 
     logger.info("Updating database structure...")
-    _, stdout, stderr = ssh.exec_command(f"cd server; ./scripts/update_database_struct.sh {CONFIG['argus_db_environment']}")
+    _, stdout, stderr = ssh.exec_command(f"cd server; pipenv run flask db init")
+    print_ssh_output(stdout, stderr)
+    _, stdout, stderr = ssh.exec_command(f"cd server; pipenv run flask db migrate")
+    print_ssh_output(stdout, stderr)
+    _, stdout, stderr = ssh.exec_command(f"cd server; pipenv run flask db upgrade")
     print_ssh_output(stdout, stderr)
 
     logger.info("Updating database content...")
-    _, stdout, stderr = ssh.exec_command(f"cd server; ./scripts/update_database_data.sh {CONFIG['argus_db_environment']} {CONFIG['argus_db_content']}")
+    _, stdout, stderr = ssh.exec_command(f"cd server; pipenv run src/data.py -d -c {CONFIG['argus_db_content']}")
     print_ssh_output(stdout, stderr)
 
     ssh.close()

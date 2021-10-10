@@ -13,7 +13,6 @@ printf "\n\n# Updating the system\n"
 sudo apt-get update
 sudo apt-get -y upgrade
 sudo apt-get -y autoremove
-sudo apt-get -y install pipenv
 
 printf "\n\n# User argus\n"
 # Setup user with password
@@ -143,6 +142,9 @@ sudo apt-get -y install \
   pkg-config \
   gir1.2-gtk-3.0
 
+echo "## Install pipenv latest"
+sudo pip3 install pipenv
+
 echo "## Configure systemd services"
 sudo cp -r /tmp/etc/systemd/* /etc/systemd/system/
 sudo systemctl daemon-reload
@@ -156,4 +158,4 @@ echo "# Type Path                     Mode    UID     GID     Age     Argument" 
 echo "d /run/argus 0755 argus argus" | sudo tee /usr/lib/tmpfiles.d/argus.conf
 
 echo "## Setup hostname"
-echo "arpi.local" | sudo tee /etc/hostname
+echo $ARPI_HOSTNAME | sudo tee /etc/hostname
