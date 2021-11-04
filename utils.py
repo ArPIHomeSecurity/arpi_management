@@ -5,6 +5,7 @@ Created on 2017. aug. 27.
 """
 
 import glob
+import logging
 import os.path
 import subprocess
 from os import listdir
@@ -13,6 +14,9 @@ from os.path import isfile, join
 import paramiko
 from scp import SCPClient
 
+
+# get main logger
+logger = logging.getLogger(__name__)
 
 def collect_files(local_path, file_filter=[]):
     results = []
@@ -88,3 +92,9 @@ def generate_SSH_key(key_name, passphrase):
         public_key.write("%s %s" % (key.get_name(), key.get_base64()))
 
     public_key.close()
+
+def execute_remote(ssh, command, message=None):
+    if message:
+        logger.info(message)
+    _, stdout, stderr = ssh.exec_command(command)
+    print_ssh_output(stdout, stderr)

@@ -29,7 +29,7 @@ from paramiko.ssh_exception import (AuthenticationException,
                                     NoValidConnectionsError)
 from scp import SCPClient
 
-from utils import (deep_copy, generate_SSH_key, list_copy, print_lines,
+from utils import (deep_copy, execute_remote, generate_SSH_key, list_copy, print_lines,
                    print_ssh_output, progress, uploaded_files)
 
 CONFIG = {}
@@ -42,6 +42,17 @@ __all__ = []
 __version__ = 0.1
 __date__ = "2017-08-21"
 __updated__ = "2019-08-21"
+program_shortdesc = __import__("__main__").__doc__.split("---")[0]
+program_license = """%s
+
+  Created by gkovacs81@gmail.com on %s.
+  Copyright 2019 arpi-security.info. All rights reserved.
+
+USAGE
+""" % (
+        program_shortdesc,
+        str(__date__),
+    )
 
 
 def get_connection():
@@ -113,23 +124,25 @@ def install_environment():
         sleep(2)
 
     ssh = get_connection()
-    logger.info("Enabling key based ssh authentication")
-    _, stdout, stderr = ssh.exec_command("sudo sed -i -E -e 's/.*PasswordAuthentication (yes|no)/PasswordAuthentication no/g' /etc/ssh/sshd_config")
-    print_ssh_output(stdout, stderr)
 
-    logger.info("Restarting the host")
-    _, stdout, stderr = ssh.exec_command("sudo reboot")
-    print_ssh_output(stdout, stderr)
+    execute_remote(message="Enabling key based ssh authentication",
+        ssh=ssh, command="sudo sed -i -E -e 's/.*PasswordAuthentication (yes|no)/PasswordAuthentication no/g' /etc/ssh/sshd_config"
+    )
+
+    execute_remote(message="Restarting the host",
+        ssh=ssh, command="sudo reboot"
+    )
 
 
-def install_server():
+def install_server(update=False, restart=False):
     """
     Install the server component to a Raspberry PI.
     """
     ssh = get_connection()
-    logger.info("Creating server directories...")
-    _, stdout, stderr = ssh.exec_command("mkdir -p  server/scripts; mkdir -p server/etc; mkdir -p server/webapplication")
-    print_ssh_output(stdout, stderr)
+    
+    execute_remote(message="Creating server directories...",
+        ssh=ssh, command="mkdir -p  server/scripts; mkdir -p server/etc; mkdir -p server/webapplication",
+    )
 
     list_copy(ssh, (
         (join(CONFIG["server_path"], "Pipfile"), "server"),
@@ -143,17 +156,22 @@ def install_server():
     logger.debug("Files:\n%s" % pformat(uploaded_files))
     uploaded_files.clear()
 
-    logger.info("Start installing python packages on sytem...")
-    _, stdout, stderr = ssh.exec_command("cd server; sudo PIPENV_TIMEOUT=9999 pipenv install --system --deploy --skip-lock")
-    print_ssh_output(stdout, stderr)
-    
-    logger.info("Create virtual environment with python3 for argus...")
-    _, stdout, stderr = ssh.exec_command("cd server; PIPENV_TIMEOUT=9999 CI=1 pipenv --site-packages")
-    print_ssh_output(stdout, stderr)
+    if update:
+        execute_remote(message="Start installing python packages on sytem...",
+            ssh=ssh, command="cd server; sudo PIPENV_TIMEOUT=9999 pipenv sync --system --deploy --skip-lock"
+        )
+        execute_remote(message="Create virtual environment with python3 for argus...",
+            ssh=ssh, command="cd server; PIPENV_TIMEOUT=9999 CI=1 pipenv --site-packages"
+        )
+        execute_remote(message="Create virtual environment with python3 for root...",
+            ssh=ssh, command="cd server; sudo PIPENV_TIMEOUT=9999 CI=1 pipenv --site-packages"
+        )
 
-    logger.info("Create virtual environment with python3 for root...")
-    _, stdout, stderr = ssh.exec_command("cd server; sudo PIPENV_TIMEOUT=9999 CI=1 pipenv --site-packages")
-    print_ssh_output(stdout, stderr)
+
+    if restart:
+        execute_remote(message="Restarting the service...",
+            ssh=ssh, command="sudo systemctl restart argus_monitor.service argus_server.service"
+        )
 
     ssh.close()
 
@@ -164,30 +182,28 @@ def install_database():
     """
     ssh = get_connection()
 
-    logger.info("Updating database structure...")
-    _, stdout, stderr = ssh.exec_command(f"cd server; pipenv run flask db init")
-    print_ssh_output(stdout, stderr)
-    _, stdout, stderr = ssh.exec_command(f"cd server; pipenv run flask db migrate")
-    print_ssh_output(stdout, stderr)
-    _, stdout, stderr = ssh.exec_command(f"cd server; pipenv run flask db upgrade")
-    print_ssh_output(stdout, stderr)
+    execute_remote(message="Updating database structure...",
+        ssh=ssh, command="cd server; pipenv run flask db init"
+    )
+    execute_remote(ssh, "cd server; pipenv run flask db migrate")
+    execute_remote(ssh, "cd server; pipenv run flask db upgrade")
 
-    logger.info("Updating database content...")
-    _, stdout, stderr = ssh.exec_command(f"cd server; pipenv run src/data.py -d -c {CONFIG['argus_db_content']}")
-    print_ssh_output(stdout, stderr)
+    execute_remote(message="Updating database content...",
+        ssh=ssh, command=f"cd server; pipenv run src/data.py -d -c {CONFIG['argus_db_content']}"
+    )
 
     ssh.close()
 
 
-def install_webapplication():
+def install_webapplication(restart=False):
     """
     Install the web application component to a Raspberry PI.
     """
     ssh = get_connection()
 
-    logger.info("Delete old webapplication on remote site...")
-    _, stdout, stderr = ssh.exec_command("rm -R server/webapplication || true")
-    print_ssh_output(stdout, stderr)
+    execute_remote(message="Delete old webapplication on remote site...",
+        ssh=ssh, command="rm -R server/webapplication || true"
+    )
 
     for idx, language in enumerate(CONFIG['languages']):
         target = ''
@@ -202,6 +218,11 @@ def install_webapplication():
         logger.info("Files: %s" % pformat(uploaded_files))
         uploaded_files.clear()
 
+    if restart:
+        execute_remote(message="Restarting the service...",
+            ssh=ssh, command="sudo systemctl restart argus_server.service"
+        )
+
 
 def main(argv=None):  # IGNORE:C0111
     """Command line options."""
@@ -210,18 +231,6 @@ def main(argv=None):  # IGNORE:C0111
         argv = sys.argv
     else:
         sys.argv.extend(argv)
-
-    program_shortdesc = __import__("__main__").__doc__.split("---")[0]
-    program_license = """%s
-
-  Created by gkovacs81@gmail.com on %s.
-  Copyright 2019 arpi-security.info. All rights reserved.
-
-USAGE
-""" % (
-        program_shortdesc,
-        str(__date__),
-    )
 
     try:
         # Setup argument parser
@@ -232,6 +241,8 @@ USAGE
         # parser.add_argument(dest="action", help="install", metavar="action")
         parser.add_argument("component", choices=["environment", "server", "webapplication", "database"])
         parser.add_argument("-e", "--env", dest="environment", default="", help="Select a different config (install.{environment}.yaml)")
+        parser.add_argument("-r", "--restart", action="store_true", help="Restart depending service(s) after deployment")
+        parser.add_argument("-u", "--update", action="store_true", help="Update the python environment for the depending service(s) after deployment")
 
         # Process arguments
         args = parser.parse_args()
@@ -256,20 +267,21 @@ USAGE
         if args.component == "environment":
             install_environment()
         elif args.component == "server":
-            install_server()
+            install_server(args.update, args.restart)
         elif args.component == "webapplication":
-            install_webapplication()
+            install_webapplication(args.restart)
         elif args.component == "database":
             install_database()
+        
+        logger.info("Finished successfully!")
         return 0
     except KeyboardInterrupt:
         # handle keyboard interrupt ###
+        logger.info("\n\nCancelled!\n")
         return 0
     except Exception:
         logger.exception("Failed to execute!")
         return 2
-
-    logger.info("Finished successfully!")
 
 
 if __name__ == "__main__":
