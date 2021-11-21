@@ -133,26 +133,30 @@ def install_environment():
         ssh=ssh, command="sudo reboot"
     )
 
-
-def install_server(update=False, restart=False):
+def install_software(component, update=False, restart=False):
     """
-    Install the server component to a Raspberry PI.
+    Install the monitor component to a Raspberry PI.
     """
     ssh = get_connection()
-    
+
     execute_remote(message="Creating server directories...",
         ssh=ssh, command="mkdir -p  server/scripts; mkdir -p server/etc; mkdir -p server/webapplication",
     )
 
+    logger.info("Copy common files...")
     list_copy(ssh, (
         (join(CONFIG["server_path"], "Pipfile"), "server"),
-        (join(CONFIG["server_path"], f".env_{CONFIG['environment']}"), "server/.env")
+        (join(CONFIG["server_path"], f".env_{CONFIG['environment']}"), "server/.env"),
+        (join(CONFIG["server_path"], "src", "data.py"), join("server", "src")),
+        (join(CONFIG["server_path"], "src", "hash.py"), join("server", "src")),
+        (join(CONFIG["server_path"], "src", "models.py"), join("server", "src"))
     ))
     logger.debug("%-80s\n%s", "Files copied:", pformat(uploaded_files))
     uploaded_files.clear()
 
-    deep_copy(ssh, join(CONFIG["server_path"], "src"), join("server", "src"), "**/*.py")
-
+    logger.info("Copy component...")
+    deep_copy(ssh, join(CONFIG["server_path"], "src", component), join("server", "src", component), "**/*.py")
+    deep_copy(ssh, join(CONFIG["server_path"], "src", "tools"), join("server", "src", "tools"), "**/*.py")
     logger.debug("Files:\n%s" % pformat(uploaded_files))
     uploaded_files.clear()
 
@@ -175,6 +179,17 @@ def install_server(update=False, restart=False):
 
     ssh.close()
 
+def install_server(update=False, restart=False):
+    """
+    Install the server component to a Raspberry PI.
+    """
+    install_software("server", update=update, restart=restart)
+
+def install_monitoring(update=False, restart=False):
+    """
+    Install the monitor component to a Raspberry PI.
+    """
+    install_software("monitoring", update=update, restart=restart)
 
 def install_database():
     """
@@ -239,7 +254,7 @@ def main(argv=None):  # IGNORE:C0111
         parser.add_argument("-v", "--verbose", dest="verbose", action="count", help="set verbosity level [default: %(default)s]")
         # parser.add_argument('-V', '--version', action='version', version=program_version_message)
         # parser.add_argument(dest="action", help="install", metavar="action")
-        parser.add_argument("component", choices=["environment", "server", "webapplication", "database"])
+        parser.add_argument("component", choices=["environment", "server", "monitoring", "webapplication", "database"])
         parser.add_argument("-e", "--env", dest="environment", default="", help="Select a different config (install.{environment}.yaml)")
         parser.add_argument("-r", "--restart", action="store_true", help="Restart depending service(s) after deployment")
         parser.add_argument("-u", "--update", action="store_true", help="Update the python environment for the depending service(s) after deployment")
@@ -268,11 +283,15 @@ def main(argv=None):  # IGNORE:C0111
             install_environment()
         elif args.component == "server":
             install_server(args.update, args.restart)
+        elif args.component == "monitoring":
+            install_monitoring(args.update, args.restart)
         elif args.component == "webapplication":
             install_webapplication(args.restart)
         elif args.component == "database":
             install_database()
-        
+        else:
+            logger.error("Unknown component: %s", args.component)
+
         logger.info("Finished successfully!")
         return 0
     except KeyboardInterrupt:
