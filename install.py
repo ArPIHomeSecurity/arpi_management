@@ -25,12 +25,18 @@ from time import sleep
 
 import paramiko
 import yaml
-from paramiko.ssh_exception import (AuthenticationException,
-                                    NoValidConnectionsError)
+from paramiko.ssh_exception import AuthenticationException, NoValidConnectionsError
 from scp import SCPClient
 
-from utils import (deep_copy, execute_remote, generate_SSH_key, list_copy, print_lines,
-                   print_ssh_output, progress, uploaded_files)
+from utils import (
+    deep_copy,
+    execute_remote,
+    generate_SSH_key,
+    list_copy,
+    print_lines,
+    progress,
+    uploaded_files,
+)
 
 CONFIG = {}
 
@@ -50,28 +56,44 @@ program_license = """%s
 
 USAGE
 """ % (
-        program_shortdesc,
-        str(__date__),
-    )
+    program_shortdesc,
+    str(__date__),
+)
 
 
 def get_connection():
     try:
-        logger.info("Connecting with private key in '%s' %s@%s", CONFIG['arpi_key_name'], CONFIG["arpi_username"], CONFIG["arpi_hostname"])
+        logger.info(
+            "Connecting with private key in '%s' %s@%s",
+            CONFIG["arpi_key_name"],
+            CONFIG["arpi_username"],
+            CONFIG["arpi_hostname"],
+        )
 
         private_key = None
-        if path.exists(CONFIG['arpi_key_name']):
-            private_key = paramiko.RSAKey.from_private_key_file(CONFIG['arpi_key_name'], CONFIG['arpi_password'])
+        if path.exists(CONFIG["arpi_key_name"]):
+            private_key = paramiko.RSAKey.from_private_key_file(
+                CONFIG["arpi_key_name"], CONFIG["arpi_password"]
+            )
 
         ssh = paramiko.SSHClient()
         ssh.load_system_host_keys()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(CONFIG["arpi_hostname"], username=CONFIG["arpi_username"], password=CONFIG["arpi_password"], pkey=private_key)
+        ssh.connect(
+            CONFIG["arpi_hostname"],
+            username=CONFIG["arpi_username"],
+            password=CONFIG["arpi_password"],
+            pkey=private_key,
+        )
         logger.info("Connected")
     except (AuthenticationException, NoValidConnectionsError, gaierror):
         try:
             logger.info("Connecting %s@%s", CONFIG["default_username"], CONFIG["default_hostname"])
-            ssh.connect(CONFIG["default_hostname"], username=CONFIG["default_username"], password=CONFIG["default_password"])
+            ssh.connect(
+                CONFIG["default_hostname"],
+                username=CONFIG["default_username"],
+                password=CONFIG["default_password"],
+            )
             logger.info("Connected")
         except (NoValidConnectionsError, gaierror):
             raise Exception("Can't connect to the host!")
@@ -83,8 +105,10 @@ def install_environment():
     """
     Install prerequisites to an empty Raspberry PI.
     """
-    if not path.exists(CONFIG['arpi_key_name']) and not path.exists(CONFIG['arpi_key_name'] + ".pub"):
-        generate_SSH_key(CONFIG['arpi_key_name'], CONFIG['arpi_password'])
+    if not path.exists(CONFIG["arpi_key_name"]) and not path.exists(
+        CONFIG["arpi_key_name"] + ".pub"
+    ):
+        generate_SSH_key(CONFIG["arpi_key_name"], CONFIG["arpi_password"])
 
     ssh = get_connection()
 
@@ -125,13 +149,14 @@ def install_environment():
 
     ssh = get_connection()
 
-    execute_remote(message="Enabling key based ssh authentication",
-        ssh=ssh, command="sudo sed -i -E -e 's/.*PasswordAuthentication (yes|no)/PasswordAuthentication no/g' /etc/ssh/sshd_config"
+    execute_remote(
+        message="Enabling key based ssh authentication",
+        ssh=ssh,
+        command="sudo sed -i -E -e 's/.*PasswordAuthentication (yes|no)/PasswordAuthentication no/g' /etc/ssh/sshd_config",
     )
 
-    execute_remote(message="Restarting the host",
-        ssh=ssh, command="sudo reboot"
-    )
+    execute_remote(message="Restarting the host", ssh=ssh, command="sudo reboot")
+
 
 def install_software(component, update=False, restart=False):
     """
@@ -139,45 +164,65 @@ def install_software(component, update=False, restart=False):
     """
     ssh = get_connection()
 
-    execute_remote(message="Creating server directories...",
-        ssh=ssh, command="mkdir -p  server/scripts; mkdir -p server/etc; mkdir -p server/webapplication",
+    execute_remote(
+        message="Creating server directories...",
+        ssh=ssh,
+        command="mkdir -p  server/scripts; mkdir -p server/etc; mkdir -p server/webapplication",
     )
 
     logger.info("Copy common files...")
-    list_copy(ssh, (
-        (join(CONFIG["server_path"], "Pipfile"), "server"),
-        (join(CONFIG["server_path"], f".env_{CONFIG['environment']}"), "server/.env"),
-        (join(CONFIG["server_path"], "src", "data.py"), join("server", "src")),
-        (join(CONFIG["server_path"], "src", "hash.py"), join("server", "src")),
-        (join(CONFIG["server_path"], "src", "models.py"), join("server", "src"))
-    ))
+    list_copy(
+        ssh,
+        (
+            (join(CONFIG["server_path"], "Pipfile"), "server"),
+            (join(CONFIG["server_path"], f".env_{CONFIG['environment']}"), "server/.env"),
+            (join(CONFIG["server_path"], "src", "data.py"), join("server", "src")),
+            (join(CONFIG["server_path"], "src", "hash.py"), join("server", "src")),
+            (join(CONFIG["server_path"], "src", "models.py"), join("server", "src")),
+        ),
+    )
     logger.debug("%-80s\n%s", "Files copied:", pformat(uploaded_files))
     uploaded_files.clear()
 
     logger.info("Copy component...")
-    deep_copy(ssh, join(CONFIG["server_path"], "src", component), join("server", "src", component), "**/*.py")
-    deep_copy(ssh, join(CONFIG["server_path"], "src", "tools"), join("server", "src", "tools"), "**/*.py")
+    deep_copy(
+        ssh,
+        join(CONFIG["server_path"], "src", component),
+        join("server", "src", component),
+        "**/*.py",
+    )
+    deep_copy(
+        ssh, join(CONFIG["server_path"], "src", "tools"), join("server", "src", "tools"), "**/*.py"
+    )
     logger.debug("Files:\n%s" % pformat(uploaded_files))
     uploaded_files.clear()
 
     if update:
-        execute_remote(message="Start installing python packages on sytem...",
-            ssh=ssh, command="cd server; sudo PIPENV_TIMEOUT=9999 pipenv sync --system --deploy --skip-lock"
+        execute_remote(
+            message="Start installing python packages on sytem...",
+            ssh=ssh,
+            command="cd server; sudo PIPENV_TIMEOUT=9999 pipenv sync --system --deploy --skip-lock",
         )
-        execute_remote(message="Create virtual environment with python3 for argus...",
-            ssh=ssh, command="cd server; PIPENV_TIMEOUT=9999 CI=1 pipenv --site-packages"
+        execute_remote(
+            message="Create virtual environment with python3 for argus...",
+            ssh=ssh,
+            command="cd server; PIPENV_TIMEOUT=9999 CI=1 pipenv --site-packages",
         )
-        execute_remote(message="Create virtual environment with python3 for root...",
-            ssh=ssh, command="cd server; sudo PIPENV_TIMEOUT=9999 CI=1 pipenv --site-packages"
+        execute_remote(
+            message="Create virtual environment with python3 for root...",
+            ssh=ssh,
+            command="cd server; sudo PIPENV_TIMEOUT=9999 CI=1 pipenv --site-packages",
         )
-
 
     if restart:
-        execute_remote(message="Restarting the service...",
-            ssh=ssh, command="sudo systemctl restart argus_monitor.service argus_server.service"
+        execute_remote(
+            message="Restarting the service...",
+            ssh=ssh,
+            command="sudo systemctl restart argus_monitor.service argus_server.service",
         )
 
     ssh.close()
+
 
 def install_server(update=False, restart=False):
     """
@@ -185,11 +230,13 @@ def install_server(update=False, restart=False):
     """
     install_software("server", update=update, restart=restart)
 
+
 def install_monitoring(update=False, restart=False):
     """
     Install the monitor component to a Raspberry PI.
     """
     install_software("monitoring", update=update, restart=restart)
+
 
 def install_database():
     """
@@ -197,14 +244,18 @@ def install_database():
     """
     ssh = get_connection()
 
-    execute_remote(message="Updating database structure...",
-        ssh=ssh, command="cd server; pipenv run flask db init"
+    execute_remote(
+        message="Updating database structure...",
+        ssh=ssh,
+        command="cd server; pipenv run flask db init",
     )
     execute_remote(ssh, "cd server; pipenv run flask db migrate")
     execute_remote(ssh, "cd server; pipenv run flask db upgrade")
 
-    execute_remote(message="Updating database content...",
-        ssh=ssh, command=f"cd server; pipenv run src/data.py -d -c {CONFIG['argus_db_content']}"
+    execute_remote(
+        message="Updating database content...",
+        ssh=ssh,
+        command=f"cd server; pipenv run src/data.py -d -c {CONFIG['argus_db_content']}",
     )
 
     ssh.close()
@@ -216,12 +267,14 @@ def install_webapplication(restart=False):
     """
     ssh = get_connection()
 
-    execute_remote(message="Delete old webapplication on remote site...",
-        ssh=ssh, command="rm -R server/webapplication || true"
+    execute_remote(
+        message="Delete old webapplication on remote site...",
+        ssh=ssh,
+        command="rm -R server/webapplication || true",
     )
 
-    for idx, language in enumerate(CONFIG['languages']):
-        target = ''
+    for idx, language in enumerate(CONFIG["languages"]):
+        target = ""
         if idx > 0:
             target = join("server", "webapplication", language)
         else:
@@ -234,8 +287,10 @@ def install_webapplication(restart=False):
         uploaded_files.clear()
 
     if restart:
-        execute_remote(message="Restarting the service...",
-            ssh=ssh, command="sudo systemctl restart argus_server.service"
+        execute_remote(
+            message="Restarting the service...",
+            ssh=ssh,
+            command="sudo systemctl restart argus_server.service",
         )
 
 
@@ -249,15 +304,42 @@ def main(argv=None):  # IGNORE:C0111
 
     try:
         # Setup argument parser
-        parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
+        parser = ArgumentParser(
+            description=program_license, formatter_class=RawDescriptionHelpFormatter
+        )
         # parser.add_argument("-r", "--recursive", dest="recurse", action="store_true", help="recurse into subfolders [default: %(default)s]")
-        parser.add_argument("-v", "--verbose", dest="verbose", action="count", help="set verbosity level [default: %(default)s]")
+        parser.add_argument(
+            "-v",
+            "--verbose",
+            dest="verbose",
+            action="count",
+            help="set verbosity level [default: %(default)s]",
+        )
         # parser.add_argument('-V', '--version', action='version', version=program_version_message)
         # parser.add_argument(dest="action", help="install", metavar="action")
-        parser.add_argument("component", choices=["environment", "server", "monitoring", "webapplication", "database"])
-        parser.add_argument("-e", "--env", dest="environment", default="", help="Select a different config (install.{environment}.yaml)")
-        parser.add_argument("-r", "--restart", action="store_true", help="Restart depending service(s) after deployment")
-        parser.add_argument("-u", "--update", action="store_true", help="Update the python environment for the depending service(s) after deployment")
+        parser.add_argument(
+            "component",
+            choices=["environment", "server", "monitoring", "webapplication", "database"],
+        )
+        parser.add_argument(
+            "-e",
+            "--env",
+            dest="environment",
+            default="",
+            help="Select a different config (install.{environment}.yaml)",
+        )
+        parser.add_argument(
+            "-r",
+            "--restart",
+            action="store_true",
+            help="Restart depending service(s) after deployment",
+        )
+        parser.add_argument(
+            "-u",
+            "--update",
+            action="store_true",
+            help="Update the python environment for the depending service(s) after deployment",
+        )
 
         # Process arguments
         args = parser.parse_args()

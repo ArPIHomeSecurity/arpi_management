@@ -6,7 +6,7 @@ import sys
 
 from utils import get_repository_version
 
-__version__ = "V0.6.00"
+__version__ = "V0.7.00"
 
 
 def replace(filename, placeholder, value):
@@ -17,9 +17,7 @@ def replace(filename, placeholder, value):
 
 def main():
     server_version = __version__ + ":" + get_repository_version("server")
-    webapplication_version = (
-        __version__ + ":" + get_repository_version("webapplication")
-    )
+    webapplication_version = __version__ + ":" + get_repository_version("webapplication")
 
     print("Server: %s" % server_version)
     print("Webapp: %s" % webapplication_version)

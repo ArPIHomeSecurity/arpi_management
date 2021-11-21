@@ -18,6 +18,7 @@ from scp import SCPClient
 # get main logger
 logger = logging.getLogger(__name__)
 
+
 def collect_files(local_path, file_filter=[]):
     results = []
     for item in listdir(local_path):
@@ -47,7 +48,12 @@ uploaded_files = set()
 
 def progress(filename, size, sent):
     uploaded_files.add(filename.decode("utf-8"))
-    print(("%s: %s/%s => %2d%%" % (filename.decode("utf-8"), size, sent, 100*sent/size)).ljust(100), end="\r")
+    print(
+        ("%s: %s/%s => %2d%%" % (filename.decode("utf-8"), size, sent, 100 * sent / size)).ljust(
+            100
+        ),
+        end="\r",
+    )
 
 
 def list_copy(ssh, files):
@@ -79,8 +85,16 @@ def deep_copy(ssh, source, target, filter):
 
 
 def get_repository_version(path):
-    branch = subprocess.check_output(["git", "-C", path, "rev-parse", "--abbrev-ref", "HEAD"]).strip().decode("utf-8")
-    commit = subprocess.check_output(["git", "-C", path, "rev-parse", "HEAD"]).strip().decode("utf-8")[0:7]
+    branch = (
+        subprocess.check_output(["git", "-C", path, "rev-parse", "--abbrev-ref", "HEAD"])
+        .strip()
+        .decode("utf-8")
+    )
+    commit = (
+        subprocess.check_output(["git", "-C", path, "rev-parse", "HEAD"])
+        .strip()
+        .decode("utf-8")[0:7]
+    )
     return "{}-{}".format(branch, commit)
 
 
@@ -88,10 +102,11 @@ def generate_SSH_key(key_name, passphrase):
     key = paramiko.RSAKey.generate(4096)
     key.write_private_key_file(key_name, password=passphrase)
 
-    with open(key_name+".pub", "w") as public_key:
+    with open(key_name + ".pub", "w") as public_key:
         public_key.write("%s %s" % (key.get_name(), key.get_base64()))
 
     public_key.close()
+
 
 def execute_remote(ssh, command, message=None):
     if message:
