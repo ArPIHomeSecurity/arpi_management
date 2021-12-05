@@ -201,7 +201,7 @@ def install_software(component, update=False, restart=False):
         execute_remote(
             message="Start installing python packages on sytem...",
             ssh=ssh,
-            command="cd server; sudo PIPENV_TIMEOUT=9999 pipenv sync --system --deploy --skip-lock",
+            command="cd server; sudo PIPENV_TIMEOUT=9999 pipenv sync --system",
         )
         execute_remote(
             message="Create virtual environment with python3 for argus...",
