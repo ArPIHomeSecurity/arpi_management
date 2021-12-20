@@ -13,6 +13,7 @@ It uses the configuration file install.yaml!
 
 @contact:    gkovacs81@gmail.com
 """
+import json
 import logging
 import subprocess
 import sys
@@ -167,7 +168,7 @@ def install_software(component, update=False, restart=False):
     execute_remote(
         message="Creating server directories...",
         ssh=ssh,
-        command="mkdir -p  server/scripts; mkdir -p server/etc; mkdir -p server/webapplication",
+        command="mkdir -p  server/etc server/scripts server/src server/webapplication",
     )
 
     logger.info("Copy common files...")
@@ -175,27 +176,24 @@ def install_software(component, update=False, restart=False):
         ssh,
         (
             (join(CONFIG["server_path"], "Pipfile"), "server"),
+            (join(CONFIG["server_path"], "Pipfile.lock"), "server"),
             (join(CONFIG["server_path"], f".env_{CONFIG['environment']}"), "server/.env"),
-            (join(CONFIG["server_path"], "src", "data.py"), join("server", "src")),
-            (join(CONFIG["server_path"], "src", "hash.py"), join("server", "src")),
-            (join(CONFIG["server_path"], "src", "models.py"), join("server", "src")),
+            (join(CONFIG["server_path"], "src", "data.py"), join("server", "src", "data.py")),
+            (join(CONFIG["server_path"], "src", "hash.py"), join("server", "src", "hash.py")),
+            (join(CONFIG["server_path"], "src", "models.py"), join("server", "src", "models.py")),
         ),
     )
-    logger.debug("%-80s\n%s", "Files copied:", pformat(uploaded_files))
-    uploaded_files.clear()
+    deep_copy(
+        ssh, join(CONFIG["server_path"], "src", "tools"), join("server", "src", "tools"), "**/*.py"
+    )
 
-    logger.info("Copy component...")
+    logger.info("Copy component '%s'...", component)
     deep_copy(
         ssh,
         join(CONFIG["server_path"], "src", component),
         join("server", "src", component),
         "**/*.py",
     )
-    deep_copy(
-        ssh, join(CONFIG["server_path"], "src", "tools"), join("server", "src", "tools"), "**/*.py"
-    )
-    logger.debug("Files:\n%s" % pformat(uploaded_files))
-    uploaded_files.clear()
 
     if update:
         execute_remote(
@@ -358,7 +356,7 @@ def main(argv=None):  # IGNORE:C0111
         with open(config_filename, "r") as stream:
             global CONFIG
             CONFIG = yaml.load(stream, Loader=yaml.FullLoader)
-            logger.info("Working with configuration: \n%s", pformat(CONFIG))
+            logger.info("Working with configuration: \n%s", json.dumps(CONFIG, indent=4))
             input("Waiting before starting the installation to verify the configuration!")
 
         if args.component == "environment":

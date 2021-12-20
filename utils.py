@@ -10,6 +10,7 @@ import os.path
 import subprocess
 from os import listdir
 from os.path import isfile, join
+from textwrap import indent
 
 import paramiko
 from scp import SCPClient
@@ -23,7 +24,7 @@ def collect_files(local_path, file_filter=[]):
     results = []
     for item in listdir(local_path):
         if isfile(join(local_path, item)) and not item.startswith(".") and item not in file_filter:
-            print("Copy file: %s" % item)
+            logger.info("Copy file: %s", item)
             results.append(item)
     return results
 
@@ -48,20 +49,20 @@ uploaded_files = set()
 
 def progress(filename, size, sent):
     uploaded_files.add(filename.decode("utf-8"))
-    print(
-        ("%s: %s/%s => %2d%%" % (filename.decode("utf-8"), size, sent, 100 * sent / size)).ljust(
-            100
-        ),
-        end="\r",
-    )
+    print("%s: %s/%s => %2d%%" % (filename.decode("utf-8"), sent, size, 100 * sent / size), end="\r")
 
 
 def list_copy(ssh, files):
     scp = SCPClient(ssh.get_transport(), progress=progress)
 
     for source, target in files:
-        print("Copying %s to %s" % (source, join(target, source.split("/")[-1])))
+        logger.info("  Copying %s to %s", source, join(target, source.split("/")[-1]))
         scp.put(source, remote_path=target)
+
+    # delete last progress line
+    print("\033[K", end="\r")
+    logger.debug("Files copied:\n%s\n", indent('\n'.join(sorted(uploaded_files)), "  "))
+    uploaded_files.clear()
 
 
 def deep_copy(ssh, source, target, filter):
@@ -74,7 +75,7 @@ def deep_copy(ssh, source, target, filter):
         if os.path.isfile(fullfilename):
             filename = fullfilename.split("/")[-1]
             directories = fullfilename.split(source + "/")[1].rsplit(filename)[0]
-            print("Copying %s to %s" % (fullfilename, join(target, directories, filename)))
+            logger.info("  Copying %s to %s", fullfilename, join(target, directories, filename))
             # print("Directories: %s" % directories)
             # print("Source: %s" % source)
             # print("Target: %s" % target)
@@ -82,6 +83,11 @@ def deep_copy(ssh, source, target, filter):
                 stdin, stdout, stderr = ssh.exec_command("mkdir -p  %s" % join(target, directories))
                 print_ssh_output(stdout, stderr)
             scp.put(fullfilename, remote_path=join(target, directories, filename))
+
+    # delete last progress line
+    print("\033[K", end="\r")
+    logger.debug("Files copied:\n%s\n", indent('\n'.join(sorted(uploaded_files)), "  "))
+    uploaded_files.clear()
 
 
 def get_repository_version(path):
