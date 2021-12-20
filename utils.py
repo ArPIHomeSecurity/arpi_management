@@ -47,13 +47,13 @@ def print_lines(lines, indent="\t"):
 uploaded_files = set()
 
 
-def progress(filename, size, sent):
+def show_progress(filename, size, sent):
     uploaded_files.add(filename.decode("utf-8"))
     print("%s: %s/%s => %2d%%" % (filename.decode("utf-8"), sent, size, 100 * sent / size), end="\r")
 
 
-def list_copy(ssh, files):
-    scp = SCPClient(ssh.get_transport(), progress=progress)
+def list_copy(ssh, files, progress):
+    scp = SCPClient(ssh.get_transport(), progress=show_progress if progress else None)
 
     for source, target in files:
         logger.info("  Copying %s to %s", source, join(target, source.split("/")[-1]))
@@ -61,15 +61,16 @@ def list_copy(ssh, files):
 
     # delete last progress line
     print("\033[K", end="\r")
-    logger.debug("Files copied:\n%s\n", indent('\n'.join(sorted(uploaded_files)), "  "))
+    if uploaded_files:
+        logger.debug("Files copied:\n%s\n", indent('\n'.join(sorted(uploaded_files)), "  "))
     uploaded_files.clear()
 
 
-def deep_copy(ssh, source, target, filter):
+def deep_copy(ssh, source, target, filter, progress):
     stdin, stdout, stderr = ssh.exec_command("mkdir -p  %s" % target)
     print_ssh_output(stdout, stderr)
 
-    scp = SCPClient(ssh.get_transport(), progress=progress)
+    scp = SCPClient(ssh.get_transport(), progress=show_progress if progress else None)
 
     for fullfilename in glob.iglob(join(source, filter), recursive=True):
         if os.path.isfile(fullfilename):
@@ -86,7 +87,8 @@ def deep_copy(ssh, source, target, filter):
 
     # delete last progress line
     print("\033[K", end="\r")
-    logger.debug("Files copied:\n%s\n", indent('\n'.join(sorted(uploaded_files)), "  "))
+    if uploaded_files:
+        logger.debug("Files copied:\n%s\n", indent('\n'.join(sorted(uploaded_files)), "  "))
     uploaded_files.clear()
 
 

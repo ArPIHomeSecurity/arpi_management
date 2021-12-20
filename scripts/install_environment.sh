@@ -10,9 +10,9 @@ export DEBIAN_FRONTEND=noninteractive
 
 # Sytem update
 printf "\n\n# Updating the system\n"
-sudo apt-get update
-sudo apt-get -y upgrade
-sudo apt-get -y autoremove
+sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET update
+sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y upgrade
+sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y autoremove
 
 printf "\n\n# User argus\n"
 # Setup user with password
@@ -23,9 +23,10 @@ if ! id -u argus; then
   echo "argus ALL=(ALL) NOPASSWD: ALL" | sudo tee -a /etc/sudoers
 
   echo "## Install oh my zsh for argus"
-  sudo apt-get -y install zsh curl git vim
-  sudo su -c "git clone https://github.com/robbyrussell/oh-my-zsh.git ~/.oh-my-zsh" argus
-  sudo su -c "cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc" argus
+  sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install zsh curl git vim
+  set +x
+  sudo su -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh) --unattended 2>&1 | cat" argus
+  set -x
   sudo chsh -s /bin/zsh argus
 
   # create ssh keys for git access
@@ -35,7 +36,7 @@ fi
 # DATABASE
 printf "\n\n# Database install\n"
 echo "## Install postgres"
-sudo apt-get install -y postgresql postgresql-server-dev-all
+sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install postgresql postgresql-server-dev-all
 echo "## Configure access"
 sudo su -c "psql -c \"CREATE USER $ARGUS_DB_USERNAME WITH PASSWORD '$ARGUS_DB_PASSWORD';\"" postgres
 echo "## Create database"
@@ -45,23 +46,24 @@ sudo su -c "createdb -E UTF8 -e $ARGUS_DB_SCHEMA" postgres
 printf "\n\n# Install certbot\n"
 if uname -m | grep -q 'x86_64'; then
   echo "## Install snapd"
-  sudo apt-get -y install snapd
+  sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install snapd
   echo "## Update snapd"
-  sudo snap install core; sudo snap refresh core
+  sudo snap install core < /dev/null
+  sudo snap refresh core < /dev/null
   echo "## Update certbot snapd package"
-  sudo snap install certbot --classic
+  sudo snap install certbot --classic < /dev/null
   echo "## Prepare the command"
   sudo ln -s /snap/bin/certbot /usr/bin/certbot
 elif uname -m | grep -q 'armv6l'; then
   echo "## Install certbot"
-  sudo apt -y install certbot
+  sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install certbot
 fi
 
 
 # RTC
 # based on https://www.abelectronics.co.uk/kb/article/30/rtc-pi-on-raspbian-buster-and-stretch
 printf "\n\n# Install RTC - DS1307\n"
-sudo apt-get install -y i2c-tools
+sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install i2c-tools
 sudo i2cdetect -y 1
 sudo bash -c "echo ds1307 0x68 > /sys/class/i2c-adapter/i2c-1/new_device"
 echo "dtoverlay=i2c-rtc,ds1307" | sudo tee -a /boot/config.txt
@@ -93,11 +95,11 @@ printf "\n\n# Install NGINX\n"
 echo "## Download"
 mkdir ~/nginx_build
 cd ~/nginx_build
-wget http://nginx.org/download/nginx-1.19.5.tar.gz
+curl -s -O -J http://nginx.org/download/nginx-1.19.5.tar.gz
 tar xvf nginx-1.19.5.tar.gz
 cd nginx-1.19.5
 echo "## Install prerequisite"
-sudo apt-get -y install \
+sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install \
 	build-essential \
 	libpcre3-dev \
 	libssl-dev \
@@ -130,11 +132,12 @@ cd ~
 
 print "\n\n# Install and configure common tools"
 echo "## Install python3 and packages"
-sudo apt-get -y install \
+sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install \
 	python3 \
 	python3-gpiozero \
 	python3-gi \
 	python3-dev \
+  python3-pip \
 	python-virtualenv \
   gcc \
   libgirepository1.0-dev \
@@ -142,8 +145,11 @@ sudo apt-get -y install \
   pkg-config \
   gir1.2-gtk-3.0
 
+echo "## Install wiringpi for pywiegand"
+sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install wiringpi
+
 echo "## Install pipenv latest"
-sudo pip3 install pipenv
+sudo pip3 install --upgrade --progress-bar $PROGRESS pipenv
 
 echo "## Configure systemd services"
 sudo cp -r /tmp/etc/systemd/* /etc/systemd/system/

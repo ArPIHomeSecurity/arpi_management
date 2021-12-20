@@ -35,7 +35,7 @@ from utils import (
     generate_SSH_key,
     list_copy,
     print_lines,
-    progress,
+    show_progress,
     uploaded_files,
 )
 
@@ -120,13 +120,15 @@ def install_environment():
         "ARGUS_DB_USERNAME": CONFIG["argus_db_username"],
         "ARGUS_DB_PASSWORD": CONFIG["argus_db_password"],
         "ARPI_HOSTNAME": CONFIG["arpi_hostname"],
+        "QUIET": "" if CONFIG["progress"] else "-qq",
+        "PROGRESS": "on" if CONFIG["progress"] else "off"
     }
     arguments = [f"export {key}={value}" for key, value in arguments.items()]
     arguments = "; ".join(arguments)
 
-    scp = SCPClient(ssh.get_transport(), progress=progress)
+    scp = SCPClient(ssh.get_transport(), progress=show_progress if CONFIG["progress"] else None)
     scp.put("scripts/install_environment.sh", remote_path=".")
-    deep_copy(ssh, join(CONFIG["server_path"], "etc"), "/tmp/etc", "**/*")
+    deep_copy(ssh, join(CONFIG["server_path"], "etc"), "/tmp/etc", "**/*", CONFIG["progress"])
 
     channel = ssh.get_transport().open_session()
     channel.get_pty()
@@ -159,7 +161,7 @@ def install_environment():
     execute_remote(message="Restarting the host", ssh=ssh, command="sudo reboot")
 
 
-def install_software(component, update=False, restart=False):
+def install_component(component, update=False, restart=False):
     """
     Install the monitor component to a Raspberry PI.
     """
@@ -181,10 +183,10 @@ def install_software(component, update=False, restart=False):
             (join(CONFIG["server_path"], "src", "data.py"), join("server", "src", "data.py")),
             (join(CONFIG["server_path"], "src", "hash.py"), join("server", "src", "hash.py")),
             (join(CONFIG["server_path"], "src", "models.py"), join("server", "src", "models.py")),
-        ),
+        ), CONFIG["progress"]
     )
     deep_copy(
-        ssh, join(CONFIG["server_path"], "src", "tools"), join("server", "src", "tools"), "**/*.py"
+        ssh, join(CONFIG["server_path"], "src", "tools"), join("server", "src", "tools"), "**/*.py", CONFIG["progress"]
     )
 
     logger.info("Copy component '%s'...", component)
@@ -193,23 +195,24 @@ def install_software(component, update=False, restart=False):
         join(CONFIG["server_path"], "src", component),
         join("server", "src", component),
         "**/*.py",
+        CONFIG["progress"]
     )
 
     if update:
         execute_remote(
             message="Start installing python packages on sytem...",
             ssh=ssh,
-            command="cd server; sudo PIPENV_TIMEOUT=9999 pipenv sync --system",
+            command="cd server; sudo PIPENV_TIMEOUT=9999 pipenv install --system",
         )
         execute_remote(
             message="Create virtual environment with python3 for argus...",
             ssh=ssh,
-            command="cd server; PIPENV_TIMEOUT=9999 CI=1 pipenv --site-packages",
+            command="cd server; PIPENV_TIMEOUT=9999 CI=1 pipenv install --site-packages",
         )
         execute_remote(
             message="Create virtual environment with python3 for root...",
             ssh=ssh,
-            command="cd server; sudo PIPENV_TIMEOUT=9999 CI=1 pipenv --site-packages",
+            command="cd server; sudo PIPENV_TIMEOUT=9999 CI=1 pipenv install --site-packages",
         )
 
     if restart:
@@ -226,14 +229,14 @@ def install_server(update=False, restart=False):
     """
     Install the server component to a Raspberry PI.
     """
-    install_software("server", update=update, restart=restart)
+    install_component("server", update=update, restart=restart)
 
 
 def install_monitoring(update=False, restart=False):
     """
     Install the monitor component to a Raspberry PI.
     """
-    install_software("monitoring", update=update, restart=restart)
+    install_component("monitoring", update=update, restart=restart)
 
 
 def install_database():
@@ -279,7 +282,7 @@ def install_webapplication(restart=False):
             target = join("server", "webapplication")
 
         logger.info("Target[%s]: %s => %s", idx, language, target)
-        scp = SCPClient(ssh.get_transport(), progress=progress)
+        scp = SCPClient(ssh.get_transport(), progress=show_progress if CONFIG["progress"] else None)
         scp.put(join(CONFIG["webapplication_path"]), remote_path=target, recursive=True)
         logger.info("Files: %s" % pformat(uploaded_files))
         uploaded_files.clear()
@@ -305,7 +308,6 @@ def main(argv=None):  # IGNORE:C0111
         parser = ArgumentParser(
             description=program_license, formatter_class=RawDescriptionHelpFormatter
         )
-        # parser.add_argument("-r", "--recursive", dest="recurse", action="store_true", help="recurse into subfolders [default: %(default)s]")
         parser.add_argument(
             "-v",
             "--verbose",
@@ -313,8 +315,6 @@ def main(argv=None):  # IGNORE:C0111
             action="count",
             help="set verbosity level [default: %(default)s]",
         )
-        # parser.add_argument('-V', '--version', action='version', version=program_version_message)
-        # parser.add_argument(dest="action", help="install", metavar="action")
         parser.add_argument(
             "component",
             choices=["environment", "server", "monitoring", "webapplication", "database"],
@@ -338,6 +338,12 @@ def main(argv=None):  # IGNORE:C0111
             action="store_true",
             help="Update the python environment for the depending service(s) after deployment",
         )
+        parser.add_argument(
+            "-p",
+            "--progress",
+            action="store_false",
+            help="Hide progress bars",
+        )
 
         # Process arguments
         args = parser.parse_args()
@@ -351,12 +357,15 @@ def main(argv=None):  # IGNORE:C0111
         if args.environment:
             config_filename = config_filename.replace(".yaml", "." + args.environment + ".yaml")
 
+        logger.info("Working with %s", args)
         logger.info("Working from %s", config_filename)
 
         with open(config_filename, "r") as stream:
             global CONFIG
             CONFIG = yaml.load(stream, Loader=yaml.FullLoader)
-            logger.info("Working with configuration: \n%s", json.dumps(CONFIG, indent=4))
+            if not args.progress:
+                CONFIG["progress"] = args.progress
+            logger.info("Working with configuration: \n%s", json.dumps(CONFIG, indent=4, sort_keys=True))
             input("Waiting before starting the installation to verify the configuration!")
 
         if args.component == "environment":
