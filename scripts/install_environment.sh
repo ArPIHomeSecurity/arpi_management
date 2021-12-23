@@ -130,7 +130,7 @@ sudo mv -t /usr/local/nginx/conf/ssl/ arpi_dhparam.pem arpi.local.key arpi.local
 sudo chown -R www-data:www-data /usr/local/nginx/conf/ssl
 cd ~
 
-print "\n\n# Install and configure common tools"
+printf "\n\n# Install and configure common tools"
 echo "## Install python3 and packages"
 sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install \
 	python3 \
@@ -138,7 +138,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install \
 	python3-gi \
 	python3-dev \
   python3-pip \
-	python-virtualenv \
+	python3-virtualenv \
   gcc \
   libgirepository1.0-dev \
   libcairo2-dev \
@@ -146,7 +146,11 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install \
   gir1.2-gtk-3.0
 
 echo "## Install wiringpi for pywiegand"
-sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install wiringpi
+git clone https://github.com/WiringPi/WiringPi.git ~/wiringpi
+cd ~/wiringpi
+./build
+sudo ldconfig
+cd ~
 
 echo "## Install pipenv latest"
 sudo pip3 install --upgrade --progress-bar $PROGRESS pipenv

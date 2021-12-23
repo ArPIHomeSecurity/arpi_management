@@ -246,12 +246,20 @@ def install_database():
     ssh = get_connection()
 
     execute_remote(
-        message="Updating database structure...",
+        message="Initialize database...",
         ssh=ssh,
         command="cd server; pipenv run flask db init",
     )
-    execute_remote(ssh, "cd server; pipenv run flask db migrate")
-    execute_remote(ssh, "cd server; pipenv run flask db upgrade")
+    execute_remote(
+        message="Migrate database...",
+        ssh=ssh,
+        command="cd server; pipenv run flask db migrate",
+    )
+    execute_remote(
+        message="Upgrade database...",
+        ssh=ssh,
+        command="cd server; pipenv run flask db upgrade",
+    )
 
     execute_remote(
         message="Updating database content...",
