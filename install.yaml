@@ -22,3 +22,6 @@ webapplication_path: webapplication/dist-production
 languages:
   - en
   - hu
+packages:
+  postgresql_version:
+  nginx_version:

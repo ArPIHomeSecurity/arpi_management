@@ -31,17 +31,20 @@ def collect_files(local_path, file_filter=[]):
 
 def print_ssh_output(output, errors, command=""):
     if command:
-        print("Output of '%s':", command)
+        logger.debug("Output of '%s':", command)
     print_lines(output)
 
     if command:
-        print("Errors of '%s':", command)
+        logger.debug("Errors of '%s':", command)
     print_lines(errors)
 
 
 def print_lines(lines, indent="\t"):
     for line in iter(lambda: lines.readline(2048), ""):
-        print(indent + line.strip())
+        try:
+            logger.info("%s%s", indent, line.strip())
+        except UnicodeDecodeError:
+            pass
 
 
 uploaded_files = set()
@@ -67,7 +70,7 @@ def list_copy(ssh, files, progress):
 
 
 def deep_copy(ssh, source, target, filter, progress):
-    stdin, stdout, stderr = ssh.exec_command("mkdir -p  %s" % target)
+    _, stdout, stderr = ssh.exec_command(f"mkdir -p {target}")
     print_ssh_output(stdout, stderr)
 
     scp = SCPClient(ssh.get_transport(), progress=show_progress if progress else None)
@@ -77,11 +80,11 @@ def deep_copy(ssh, source, target, filter, progress):
             filename = fullfilename.split("/")[-1]
             directories = fullfilename.split(source + "/")[1].rsplit(filename)[0]
             logger.info("  Copying %s to %s", fullfilename, join(target, directories, filename))
-            # print("Directories: %s" % directories)
-            # print("Source: %s" % source)
-            # print("Target: %s" % target)
+            # print("Directories: ", directories)
+            # print("Source: ", source)
+            # print("Target: ", target)
             if directories:
-                stdin, stdout, stderr = ssh.exec_command("mkdir -p  %s" % join(target, directories))
+                _, stdout, stderr = ssh.exec_command(f"mkdir -p {join(target, directories)}")
                 print_ssh_output(stdout, stderr)
             scp.put(fullfilename, remote_path=join(target, directories, filename))
 
@@ -111,7 +114,7 @@ def generate_SSH_key(key_name, passphrase):
     key.write_private_key_file(key_name, password=passphrase)
 
     with open(key_name + ".pub", "w") as public_key:
-        public_key.write("%s %s" % (key.get_name(), key.get_base64()))
+        public_key.write(f"{key.get_name()} {key.get_base64()}")
 
     public_key.close()
 
@@ -120,4 +123,4 @@ def execute_remote(ssh, command, message=None):
     if message:
         logger.info(message)
     _, stdout, stderr = ssh.exec_command(command)
-    print_ssh_output(stdout, stderr)
+    print_ssh_output(stdout, stderr, command)

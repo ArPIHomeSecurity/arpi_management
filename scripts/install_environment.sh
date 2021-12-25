@@ -3,8 +3,10 @@
 # Install Argus onto a new Rapsbian system
 
 set -x
+PS4='+\t '
 
-printenv
+# print environment variables sorted
+env -0 | sort -z | tr '\0' '\n'
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -28,15 +30,12 @@ if ! id -u argus; then
   sudo su -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh) --unattended 2>&1 | cat" argus
   set -x
   sudo chsh -s /bin/zsh argus
-
-  # create ssh keys for git access
-  # ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa
 fi
 
 # DATABASE
 printf "\n\n# Database install\n"
 echo "## Install postgres"
-sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install postgresql postgresql-server-dev-all
+sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install postgresql${POSTGRESQL_VERSION:+=$POSTGRESQL_VERSION} postgresql-server-dev-all
 echo "## Configure access"
 sudo su -c "psql -c \"CREATE USER $ARGUS_DB_USERNAME WITH PASSWORD '$ARGUS_DB_PASSWORD';\"" postgres
 echo "## Create database"
@@ -95,9 +94,9 @@ printf "\n\n# Install NGINX\n"
 echo "## Download"
 mkdir ~/nginx_build
 cd ~/nginx_build
-curl -s -O -J http://nginx.org/download/nginx-1.19.5.tar.gz
-tar xvf nginx-1.19.5.tar.gz
-cd nginx-1.19.5
+curl -s -O -J http://nginx.org/download/nginx-$NGINX_VERSION.tar.gz
+tar xvf nginx-$NGINX_VERSION.tar.gz
+cd nginx-$NGINX_VERSION
 echo "## Install prerequisite"
 sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install \
 	build-essential \
@@ -146,7 +145,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install \
   gir1.2-gtk-3.0
 
 echo "## Install wiringpi for pywiegand"
-git clone https://github.com/WiringPi/WiringPi.git ~/wiringpi
+git clone $QUIET https://github.com/WiringPi/WiringPi.git ~/wiringpi
 cd ~/wiringpi
 ./build
 sudo ldconfig
@@ -160,7 +159,7 @@ sudo cp -r /tmp/etc/systemd/* /etc/systemd/system/
 sudo systemctl daemon-reload
 
 # only enable services if the python virtualenv is installed (otherwise after reboot the service will start to install it with sudo)
-# sudo systemctl enable nginx.service argus_server.service argus_monitor.service
+sudo systemctl enable nginx.service
 
 echo "## Configure /run folder"
 # configuring the /run/argus temporary folder to create after every reboot

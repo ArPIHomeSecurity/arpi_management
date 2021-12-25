@@ -20,7 +20,6 @@ import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from os import path
 from os.path import join
-from pprint import pformat
 from socket import gaierror
 from time import sleep
 
@@ -35,8 +34,7 @@ from utils import (
     generate_SSH_key,
     list_copy,
     print_lines,
-    show_progress,
-    uploaded_files,
+    show_progress
 )
 
 CONFIG = {}
@@ -111,8 +109,6 @@ def install_environment():
     ):
         generate_SSH_key(CONFIG["arpi_key_name"], CONFIG["arpi_password"])
 
-    ssh = get_connection()
-
     # create the env variables string because paramiko update_evironment ignores them
     arguments = {
         "ARPI_PASSWORD": CONFIG["arpi_password"],
@@ -120,12 +116,18 @@ def install_environment():
         "ARGUS_DB_USERNAME": CONFIG["argus_db_username"],
         "ARGUS_DB_PASSWORD": CONFIG["argus_db_password"],
         "ARPI_HOSTNAME": CONFIG["arpi_hostname"],
-        "QUIET": "" if CONFIG["progress"] else "-qq",
+        # progress
+        "QUIET": "" if CONFIG["progress"] else "-q",
         "PROGRESS": "on" if CONFIG["progress"] else "off"
     }
+
+    # adding package versions
+    arguments.update({p.upper(): f"{v}" for p, v in CONFIG["packages"].items() if v})
+
     arguments = [f"export {key}={value}" for key, value in arguments.items()]
     arguments = "; ".join(arguments)
 
+    ssh = get_connection()
     scp = SCPClient(ssh.get_transport(), progress=show_progress if CONFIG["progress"] else None)
     scp.put("scripts/install_environment.sh", remote_path=".")
     deep_copy(ssh, join(CONFIG["server_path"], "etc"), "/tmp/etc", "**/*", CONFIG["progress"])
@@ -207,12 +209,12 @@ def install_component(component, update=False, restart=False):
         execute_remote(
             message="Create virtual environment with python3 for argus...",
             ssh=ssh,
-            command="cd server; PIPENV_TIMEOUT=9999 CI=1 pipenv install --site-packages",
+            command="cd server; PIPENV_TIMEOUT=9999 CI=1 pipenv install --skip-lock --site-packages",
         )
         execute_remote(
             message="Create virtual environment with python3 for root...",
             ssh=ssh,
-            command="cd server; sudo PIPENV_TIMEOUT=9999 CI=1 pipenv install --site-packages",
+            command="cd server; sudo PIPENV_TIMEOUT=9999 CI=1 pipenv install --skip-lock --site-packages",
         )
 
     if restart:
@@ -282,18 +284,9 @@ def install_webapplication(restart=False):
         command="rm -R server/webapplication || true",
     )
 
-    for idx, language in enumerate(CONFIG["languages"]):
-        target = ""
-        if idx > 0:
-            target = join("server", "webapplication", language)
-        else:
-            target = join("server", "webapplication")
-
-        logger.info("Target[%s]: %s => %s", idx, language, target)
-        scp = SCPClient(ssh.get_transport(), progress=show_progress if CONFIG["progress"] else None)
-        scp.put(join(CONFIG["webapplication_path"]), remote_path=target, recursive=True)
-        logger.info("Files: %s" % pformat(uploaded_files))
-        uploaded_files.clear()
+    target = join("server", "webapplication")
+    logger.info("Copy web application: %s => %s", CONFIG["webapplication_path"], target)
+    deep_copy(ssh, CONFIG["webapplication_path"], target, "**/*", CONFIG["progress"])
 
     if restart:
         execute_remote(
@@ -349,8 +342,8 @@ def main(argv=None):  # IGNORE:C0111
         parser.add_argument(
             "-p",
             "--progress",
-            action="store_false",
-            help="Hide progress bars",
+            action="store_true",
+            help="Show progress bars",
         )
 
         # Process arguments
@@ -371,8 +364,7 @@ def main(argv=None):  # IGNORE:C0111
         with open(config_filename, "r") as stream:
             global CONFIG
             CONFIG = yaml.load(stream, Loader=yaml.FullLoader)
-            if not args.progress:
-                CONFIG["progress"] = args.progress
+            CONFIG["progress"] = args.progress
             logger.info("Working with configuration: \n%s", json.dumps(CONFIG, indent=4, sort_keys=True))
             input("Waiting before starting the installation to verify the configuration!")
 
