@@ -123,9 +123,8 @@ openssl req -new -newkey rsa:4096 -nodes -x509 \
      -subj "/C=HU/ST=Fejér/L=Baracska/O=ArPI/CN=arpi.local" \
      -keyout arpi.local.key \
      -out arpi.local.cert
-openssl dhparam -out arpi_dhparam.pem 2048
 sudo mkdir -p /usr/local/nginx/conf/ssl
-sudo mv -t /usr/local/nginx/conf/ssl/ arpi_dhparam.pem arpi.local.key arpi.local.cert
+sudo mv -t /usr/local/nginx/conf/ssl/ $DHPARAM_FILE arpi.local.key arpi.local.cert
 sudo chown -R www-data:www-data /usr/local/nginx/conf/ssl
 cd ~
 

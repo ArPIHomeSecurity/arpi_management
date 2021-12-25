@@ -25,3 +25,4 @@ languages:
 packages:
   postgresql_version:
   nginx_version:
+dhparam_size: 4096

@@ -18,8 +18,8 @@ import logging
 import subprocess
 import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from os import path
-from os.path import join
+from os import system
+from os.path import join, exists
 from socket import gaierror
 from time import sleep
 
@@ -70,7 +70,7 @@ def get_connection():
         )
 
         private_key = None
-        if path.exists(CONFIG["arpi_key_name"]):
+        if exists(CONFIG["arpi_key_name"]):
             private_key = paramiko.RSAKey.from_private_key_file(
                 CONFIG["arpi_key_name"], CONFIG["arpi_password"]
             )
@@ -104,10 +104,17 @@ def install_environment():
     """
     Install prerequisites to an empty Raspberry PI.
     """
-    if not path.exists(CONFIG["arpi_key_name"]) and not path.exists(
-        CONFIG["arpi_key_name"] + ".pub"
-    ):
+    if not exists(CONFIG["arpi_key_name"]) and \
+       not exists(CONFIG["arpi_key_name"] + ".pub"):
         generate_SSH_key(CONFIG["arpi_key_name"], CONFIG["arpi_password"])
+
+    dhparam_file = "arpi_dhparam.pem"
+    if not exists(dhparam_file):
+        logger.info("dhparam (%s) generating", dhparam_file)
+        system(f"openssl dhparam -out {dhparam_file} {CONFIG['dhparam_size']}")
+    else:
+        logger.info("dhparam (%s) already exists", dhparam_file)
+        system(f"openssl dhparam -in {dhparam_file} -text | head -3")
 
     # create the env variables string because paramiko update_evironment ignores them
     arguments = {
@@ -116,6 +123,7 @@ def install_environment():
         "ARGUS_DB_USERNAME": CONFIG["argus_db_username"],
         "ARGUS_DB_PASSWORD": CONFIG["argus_db_password"],
         "ARPI_HOSTNAME": CONFIG["arpi_hostname"],
+        "DHPARAM_FILE": join("/tmp", dhparam_file),
         # progress
         "QUIET": "" if CONFIG["progress"] else "-q",
         "PROGRESS": "on" if CONFIG["progress"] else "off"
@@ -131,6 +139,11 @@ def install_environment():
     scp = SCPClient(ssh.get_transport(), progress=show_progress if CONFIG["progress"] else None)
     scp.put("scripts/install_environment.sh", remote_path=".")
     deep_copy(ssh, join(CONFIG["server_path"], "etc"), "/tmp/etc", "**/*", CONFIG["progress"])
+    list_copy(
+        ssh,
+        ((dhparam_file, "/tmp"),),
+        CONFIG["progress"]
+    )
 
     channel = ssh.get_transport().open_session()
     channel.get_pty()
