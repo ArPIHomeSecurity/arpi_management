@@ -31,11 +31,9 @@ def collect_files(local_path, file_filter=[]):
 
 def print_ssh_output(output, errors, command=""):
     if command:
-        logger.debug("Output of '%s':", command)
-    print_lines(output)
+        logger.debug("Executed: '%s'", command)
 
-    if command:
-        logger.debug("Errors of '%s':", command)
+    print_lines(output)
     print_lines(errors)
 
 
