@@ -3,7 +3,8 @@
 """
 
 Script for installing the components of the ArPI home security system to a running Raspberry PI Zero Wifi host.
-It uses the configuration file install.yaml!
+
+It uses the configuration file install[_<environment>].yaml!
 
 ---
 
@@ -196,6 +197,7 @@ def install_component(component, update=False, restart=False):
             (join(CONFIG["server_path"], "Pipfile.lock"), "server"),
             (join(CONFIG["server_path"], f".env_{CONFIG['environment']}"), "server/.env"),
             (join(CONFIG["server_path"], "src", "data.py"), join("server", "src", "data.py")),
+            (join(CONFIG["server_path"], "src", "constants.py"), join("server", "src", "constants.py")),
             (join(CONFIG["server_path"], "src", "hash.py"), join("server", "src", "hash.py")),
             (join(CONFIG["server_path"], "src", "models.py"), join("server", "src", "models.py")),
         ), CONFIG["progress"]
