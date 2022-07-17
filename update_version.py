@@ -6,7 +6,7 @@ import sys
 
 from utils import get_repository_version
 
-__version__ = "V0.7.00"
+__version__ = "V0.8.00"
 
 
 def replace(filename, placeholder, value):
@@ -16,17 +16,17 @@ def replace(filename, placeholder, value):
 
 
 def main():
-    server_version = __version__ + ":" + get_repository_version("server")
-    webapplication_version = __version__ + ":" + get_repository_version("webapplication")
+    server_version = f"{__version__}:{get_repository_version('server')}"
+    webapplication_version = f"{__version__}:" + get_repository_version("webapplication")
 
-    print("Server: %s" % server_version)
-    print("Webapp: %s" % webapplication_version)
+    print(f"Server: {server_version}")
+    print(f"Webapp: {webapplication_version}")
 
     with open("server/src/server/version.py", "w") as f:
-        f.write('__version__="{}"'.format(server_version))
+        f.write(f'__version__="{server_version}"')
 
     with open("webapplication/src/app/version.ts", "w") as f:
-        f.write('export const VERSION = "{}"'.format(webapplication_version))
+        f.write(f'export const VERSION = "{webapplication_version}"')
 
 
 if __name__ == "__main__":
