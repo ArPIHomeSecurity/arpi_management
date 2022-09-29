@@ -13,6 +13,7 @@ black = "*"
 flake8 = "*"
 black = "*"
 rope = "*"
+pyinvoke = "*"
 
 [requires]
 python_version = "3"

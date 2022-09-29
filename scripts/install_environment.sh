@@ -35,7 +35,7 @@ fi
 # DATABASE
 printf "\n\n# Database install\n"
 echo "## Install postgres"
-sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install postgresql${POSTGRESQL_VERSION:+=$POSTGRESQL_VERSION} postgresql-server-dev-all
+sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install postgresql-${POSTGRESQL_VERSION} postgresql-server-dev-all
 echo "## Configure access"
 sudo su -c "psql -c \"CREATE USER $ARGUS_DB_USERNAME WITH PASSWORD '$ARGUS_DB_PASSWORD';\"" postgres
 echo "## Create database"

@@ -14,19 +14,23 @@ It uses the configuration file install[_<environment>].yaml!
 
 @contact:    gkovacs81@gmail.com
 """
+
 import json
 import logging
 import subprocess
 import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from os import system
-from os.path import join, exists
+from os.path import exists, join
 from socket import gaierror
 from time import sleep
 
 import paramiko
 import yaml
-from paramiko.ssh_exception import AuthenticationException, NoValidConnectionsError
+from paramiko.ssh_exception import (
+    AuthenticationException,
+    NoValidConnectionsError
+)
 from scp import SCPClient
 
 from utils import (
@@ -40,6 +44,14 @@ from utils import (
 
 CONFIG = {}
 
+
+class ConnectionError(Exception):
+    """
+    Thrown when we can't connect to the remote host.
+    """
+    pass
+
+
 logging.basicConfig(format="%(message)s")
 logger = logging.getLogger()
 logging.getLogger("paramiko").setLevel(logging.CRITICAL)
@@ -49,16 +61,13 @@ __version__ = 0.1
 __date__ = "2017-08-21"
 __updated__ = "2019-08-21"
 program_shortdesc = __import__("__main__").__doc__.split("---")[0]
-program_license = """%s
+program_license = f"""{program_shortdesc}
 
-  Created by gkovacs81@gmail.com on %s.
+  Created by gkovacs81@gmail.com on {__date__}.
   Copyright 2019 arpi-security.info. All rights reserved.
 
 USAGE
-""" % (
-    program_shortdesc,
-    str(__date__),
-)
+"""
 
 
 def get_connection():
@@ -95,8 +104,8 @@ def get_connection():
                 password=CONFIG["default_password"],
             )
             logger.info("Connected")
-        except (NoValidConnectionsError, gaierror):
-            raise Exception("Can't connect to the host!")
+        except (NoValidConnectionsError, gaierror) as error:
+            raise ConnectionError("Can't connect to the host!") from error
 
     return ssh
 
@@ -105,8 +114,7 @@ def install_environment():
     """
     Install prerequisites to an empty Raspberry PI.
     """
-    if not exists(CONFIG["arpi_key_name"]) and \
-       not exists(CONFIG["arpi_key_name"] + ".pub"):
+    if not exists(CONFIG["arpi_key_name"]) and not exists(CONFIG["arpi_key_name"] + ".pub"):
         generate_SSH_key(CONFIG["arpi_key_name"], CONFIG["arpi_password"])
 
     dhparam_file = "arpi_dhparam.pem"
@@ -117,7 +125,7 @@ def install_environment():
         logger.info("dhparam (%s) already exists", dhparam_file)
         system(f"openssl dhparam -in {dhparam_file} -text | head -3")
 
-    # create the env variables string because paramiko update_evironment ignores them
+    # create the env variables string because paramiko update_environment ignores them
     arguments = {
         "ARPI_PASSWORD": CONFIG["arpi_password"],
         "ARGUS_DB_SCHEMA": CONFIG["argus_db_schema"],
@@ -217,7 +225,7 @@ def install_component(component, update=False, restart=False):
 
     if update:
         execute_remote(
-            message="Start installing python packages on sytem...",
+            message="Start installing python packages on system...",
             ssh=ssh,
             command="cd server; sudo PIPENV_TIMEOUT=9999 pipenv install --system",
         )
@@ -328,8 +336,10 @@ def main(argv=None):  # IGNORE:C0111
             "-v",
             "--verbose",
             dest="verbose",
-            action="count",
-            help="set verbosity level [default: %(default)s]",
+            action="store_const",
+            const=logging.DEBUG,
+            default=logging.INFO,
+            help="Verbose output",
         )
         parser.add_argument(
             "component",
@@ -363,15 +373,11 @@ def main(argv=None):  # IGNORE:C0111
 
         # Process arguments
         args = parser.parse_args()
-        if args.verbose:
-            logger.setLevel(logging.DEBUG)
-            logger.info("Verbose mode on")
-        else:
-            logger.setLevel(logging.INFO)
+        logger.setLevel(args.verbose)
 
         config_filename = __file__.replace(".py", ".yaml")
         if args.environment:
-            config_filename = config_filename.replace(".yaml", "." + args.environment + ".yaml")
+            config_filename = config_filename.replace(".yaml", f".{args.environment}.yaml")
 
         logger.info("Working with %s", args)
         logger.info("Working from %s", config_filename)
