@@ -36,7 +36,7 @@ INDENT_SIZE = 2
 SERVER_GITURL = "https://github.com/ArPIHomeSecurity/arpi_server"
 WEBAPP_GITURL = "https://github.com/ArPIHomeSecurity/arpi_webapplication"
 TEMP_DIR = "/tmp"
-ARGUS_ROOT = os.getenv("ARGUS_ROOT", "/tmp/home/argus/server")
+ARGUS_HOME = os.getenv("ARGUS_ROOT", "/home/argus")
 FIRST_RELEASE_VERSION = Version("v0.9.0-RC1")
 RESTORE_FILES = [
     ".env",
@@ -104,7 +104,7 @@ def update(component, version):
 
 
 def update_server(version):
-    working_directory = os.path.join(ARGUS_ROOT, "server")
+    working_directory = os.path.join(ARGUS_HOME, "server")
     logging.info("Working directory: %s", working_directory)
 
     download(SERVER_GITURL, version, "arpi-server.tar.gz")
@@ -139,7 +139,7 @@ def update_server(version):
 
 
 def update_webapplication(version):
-    working_directory = os.path.join(ARGUS_ROOT, "webapplication")
+    working_directory = os.path.join(ARGUS_HOME, "webapplication")
     logging.info("Working directory: %s", working_directory)
 
     download(WEBAPP_GITURL, version, "arpi-webapplication.tar.gz")
