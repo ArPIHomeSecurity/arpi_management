@@ -4,7 +4,7 @@
 
 Script for installing the components of the ArPI home security system to a running Raspberry PI Zero Wifi host.
 
-It uses the configuration file install[_<environment>].yaml!
+It uses the configuration file install/[_<environment>].yaml!
 
 ---
 
@@ -21,7 +21,7 @@ import subprocess
 import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from os import system
-from os.path import exists, join
+from os.path import basename, exists, join
 from socket import gaierror
 from time import sleep
 
@@ -104,8 +104,8 @@ def get_connection():
                 password=CONFIG["default_password"],
             )
             logger.info("Connected")
-        except (NoValidConnectionsError, gaierror) as error:
-            raise ConnectionError("Can't connect to the host!") from error
+        except (AuthenticationException, NoValidConnectionsError, gaierror) as error:
+            raise ConnectionError("Can't connect to the host: %s" % error) from error
 
     return ssh
 
@@ -153,7 +153,10 @@ def install_environment():
     deep_copy(ssh, join(CONFIG["server_path"], "etc"), "/tmp/etc", "**/*", CONFIG["progress"])
     list_copy(
         ssh,
-        ((dhparam_file, "/tmp"),),
+        (
+            (dhparam_file, "/tmp"),
+            ("manage_versions.py", "~")
+        ),
         CONFIG["progress"]
     )
 
@@ -187,9 +190,35 @@ def install_environment():
         )
 
     # restart the host to activate the user
-    execute_remote(message="Restarting the host", ssh=ssh, command="sudo reboot")
-    logger.info("Finished installing environment")
+    execute_remote(message="Restarting the host", ssh=ssh, password="argus1", command="sudo reboot")
 
+    retry = 0
+    ssh = None
+    while not ssh:
+        sleep(5)
+        try:
+            ssh = get_connection()
+        except ConnectionError:
+            if retry > 10:
+                logger.warn("Failed to connect to SSH server")
+                retry += 1
+                break
+
+    if ssh:
+        execute_remote(
+            message="Delete default user...",
+            ssh=ssh,
+            password=CONFIG["arpi_password"],
+            command=f"sudo deluser {CONFIG['default_username']}"
+        )
+        execute_remote(
+            message="Delete default user home folder...",
+            ssh=ssh,
+            password=CONFIG["arpi_password"],
+            command=f"sudo rm -rf /home/{CONFIG['default_username']}"
+        )
+
+    logger.info("Finished installing environment")
 
 def install_component(component, update=False, restart=False):
     """
@@ -209,11 +238,12 @@ def install_component(component, update=False, restart=False):
         (
             (join(CONFIG["server_path"], "Pipfile"), "server"),
             (join(CONFIG["server_path"], "Pipfile.lock"), "server"),
-            (join(CONFIG["server_path"], f".env_{CONFIG['environment']}"), "server/.env"),
+            (join(CONFIG["server_path"], f"{CONFIG['environment']}.env"), "server/.env"),
             (join(CONFIG["server_path"], "src", "data.py"), join("server", "src", "data.py")),
             (join(CONFIG["server_path"], "src", "constants.py"), join("server", "src", "constants.py")),
             (join(CONFIG["server_path"], "src", "hash.py"), join("server", "src", "hash.py")),
             (join(CONFIG["server_path"], "src", "models.py"), join("server", "src", "models.py")),
+            (join(CONFIG["server_path"], "src", "new_registration_code.py"), join("server", "src", "new_registration_code.py")),
             (join(CONFIG["server_path"], "src", "tester.py"), join("server", "src", "tester.py")),
         ), CONFIG["progress"]
     )
@@ -242,20 +272,17 @@ def install_component(component, update=False, restart=False):
 
     if update:
         execute_remote(
-            message="Create virtual environment with python3 for argus...",
+            message="Install python packages to system...",
             ssh=ssh,
-            command="cd server; PIPENV_TIMEOUT=9999 CI=1 pipenv install --skip-lock --site-packages",
-        )
-        execute_remote(
-            message="Create virtual environment with python3 for root...",
-            ssh=ssh,
-            command="cd server; sudo PIPENV_TIMEOUT=9999 CI=1 pipenv install --skip-lock --site-packages",
+            password=CONFIG["arpi_password"],
+            command=f"cd server; sudo PIPENV_TIMEOUT=9999 CI=1 pipenv install {'--dev' if CONFIG['deploy_simulator'] else ''} --system",
         )
 
     if restart:
         execute_remote(
             message="Restarting the service...",
             ssh=ssh,
+            password=CONFIG["arpi_password"],
             command="sudo systemctl restart argus_monitor.service argus_server.service",
         )
 
@@ -285,23 +312,23 @@ def install_database():
     execute_remote(
         message="Initialize database...",
         ssh=ssh,
-        command="cd server; pipenv run flask db init",
+        command="cd server; export $(grep -v '^#' .env | xargs -d '\\n'); flask db init",
     )
     execute_remote(
         message="Migrate database...",
         ssh=ssh,
-        command="cd server; pipenv run flask db migrate",
+        command="cd server; export $(grep -v '^#' .env | xargs -d '\\n'); flask db migrate",
     )
     execute_remote(
         message="Upgrade database...",
         ssh=ssh,
-        command="cd server; pipenv run flask db upgrade",
+        command="cd server; export $(grep -v '^#' .env | xargs -d '\\n'); flask db upgrade",
     )
 
     execute_remote(
         message="Updating database content...",
         ssh=ssh,
-        command=f"cd server; pipenv run src/data.py -d -c {CONFIG['argus_db_content']}",
+        command=f"cd server; src/data.py -d -c {CONFIG['argus_db_content']}",
     )
 
     ssh.close()
@@ -362,7 +389,8 @@ def main(argv=None):  # IGNORE:C0111
             "--env",
             dest="environment",
             default="",
-            help="Select a different config (install.{environment}.yaml)",
+            required=True,
+            help="Select a different config (install/{environment}.yaml)",
         )
         parser.add_argument(
             "-r",
@@ -387,9 +415,7 @@ def main(argv=None):  # IGNORE:C0111
         args = parser.parse_args()
         logger.setLevel(args.verbose)
 
-        config_filename = __file__.replace(".py", ".yaml")
-        if args.environment:
-            config_filename = config_filename.replace(".yaml", f".{args.environment}.yaml")
+        config_filename = join(basename(__file__).replace(".py", ""), f"{args.environment}.yaml")
 
         logger.info("Working with %s", args)
         logger.info("Working from %s", config_filename)
@@ -416,6 +442,8 @@ def main(argv=None):  # IGNORE:C0111
 
         logger.info("Finished successfully!")
         return 0
+    except ConnectionError as error:
+        logger.warning("Unable to connect to device! %s", error)
     except KeyboardInterrupt:
         # handle keyboard interrupt ###
         logger.info("\n\nCancelled!\n")

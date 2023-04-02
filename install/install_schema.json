@@ -56,7 +56,7 @@
         },
         "environment": {
             "type": "string",
-            "title": "Argus server environment (see server/.env_*)"
+            "title": "Argus server environment (see server/*.env_)"
         },
         "server_path": {
             "type": "string",

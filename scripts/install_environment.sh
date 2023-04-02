@@ -22,7 +22,6 @@ if ! id -u argus; then
   echo "## Creating user"
   sudo useradd -G sudo -m argus
   echo "argus:$ARPI_PASSWORD" | sudo chpasswd
-  echo "argus ALL=(ALL) NOPASSWD: ALL" | sudo tee -a /etc/sudoers
 
   echo "## Install oh my zsh for argus"
   sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install zsh curl git vim minicom
@@ -135,7 +134,6 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install \
 	python3-gpiozero \
 	python3-gi \
 	python3-dev \
-  python3-pip \
   gcc \
   libgirepository1.0-dev \
   libcairo2-dev \
@@ -150,8 +148,10 @@ cd ~/wiringpi
 sudo ldconfig
 cd ~
 
-echo "## Install pipenv latest"
-sudo pip3 install --upgrade --progress-bar $PROGRESS pipenv
+echo "## Install pip packages"
+curl -OJ https://bootstrap.pypa.io/get-pip.py
+sudo python3 get-pip.py
+sudo pip3 install --progress-bar $PROGRESS pipenv importlib-resources
 
 echo "## Configure systemd services"
 sudo cp -r /tmp/etc/systemd/* /etc/systemd/system/

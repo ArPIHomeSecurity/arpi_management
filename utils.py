@@ -4,6 +4,8 @@ Created on 2017. aug. 27.
 @author: gkovacs
 """
 
+
+import contextlib
 import glob
 import logging
 import os.path
@@ -39,10 +41,9 @@ def print_ssh_output(output, errors, command=""):
 
 def print_lines(lines, indent="\t"):
     for line in iter(lambda: lines.readline(2048), ""):
-        try:
-            logger.info("%s%s", indent, line.strip())
-        except UnicodeDecodeError:
-            pass
+        with contextlib.suppress(UnicodeDecodeError):
+            if line.strip() != "None":
+                logger.info("%s%s", indent, line.strip())
 
 
 uploaded_files = set()
@@ -117,8 +118,11 @@ def generate_SSH_key(key_name, passphrase):
     public_key.close()
 
 
-def execute_remote(ssh, command, message=None):
+def execute_remote(ssh, command, password=None, message=None):
     if message:
         logger.info(message)
-    _, stdout, stderr = ssh.exec_command(command)
+    stdin, stdout, stderr = ssh.exec_command(command, get_pty = True)
+    logger.debug("Using password %s", password)
+    stdin.write(f"{password}\n")
+    stdin.flush()
     print_ssh_output(stdout, stderr, command)
