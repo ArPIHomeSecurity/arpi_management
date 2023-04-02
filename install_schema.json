@@ -1,0 +1,118 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "default_username": {
+            "type": "string",
+            "title": "Username before install"
+        },
+        "default_password": {
+            "type": "string",
+            "title": "Password before install"
+        },
+        "default_hostname": {
+            "type": "string",
+            "title": "Hostname before install"
+        },
+        "arpi_username": {
+            "type": "string",
+            "title": "Username for install"
+        },
+        "arpi_key_name": {
+            "type": "string",
+            "title": "SSH key for install"
+        },
+        "arpi_password": {
+            "type": "string",
+            "title": "SSH key passphrase of SSH password for install"
+        },
+        "arpi_hostname": {
+            "type": "string",
+            "title": "Hostname for install"
+        },
+        "deploy_ssh_key": {
+            "type": "boolean",
+            "title": "Deploy SSH public key"
+        },
+        "disable_ssh_password_authentication": {
+            "type": "boolean",
+            "title": "Disable password authentication and use only SSH key"
+        },
+        "argus_db_schema": {
+            "type": "string",
+            "title": "Argus database schema"
+        },
+        "argus_db_username": {
+            "type": "string",
+            "title": "Argus database username"
+        },
+        "argus_db_password": {
+            "type": "string",
+            "title": "Argus database password"
+        },
+        "argus_db_content": {
+            "type": "string",
+            "title": "Argus database content (see server/data.py)"
+        },
+        "environment": {
+            "type": "string",
+            "title": "Argus server environment (see server/.env_*)"
+        },
+        "server_path": {
+            "type": "string",
+            "title": "Path of the server source code in the source environment"
+        },
+        "webapplication_path": {
+            "type": "string",
+            "title": "Path of the webapplication package in the source environment"
+        },
+        "languages": {
+            "type": "array",
+            "items": [
+                {
+                    "type": "string",
+                    "title": "Language codes (see webapplication)"
+                }
+            ]
+        },
+        "packages": {
+            "type": "object",
+            "properties": {
+                "postgresql_version": {
+                    "type": "integer"
+                },
+                "nginx_version": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "postgresql_version",
+                "nginx_version"
+            ]
+        },
+        "dhparam_size": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "default_username",
+        "default_password",
+        "default_hostname",
+        "arpi_username",
+        "arpi_key_name",
+        "arpi_password",
+        "arpi_hostname",
+        "deploy_ssh_key",
+        "disable_ssh_password_authentication",
+        "argus_db_schema",
+        "argus_db_username",
+        "argus_db_password",
+        "argus_db_content",
+        "environment",
+        "server_path",
+        "webapplication_path",
+        "languages",
+        "packages",
+        "dhparam_size"
+    ]
+}

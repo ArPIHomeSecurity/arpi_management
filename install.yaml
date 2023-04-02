@@ -1,22 +1,25 @@
-# fill with the access parameters of the host before install
-default_username : pi
-default_password : raspberry
+# yaml-language-server: $schema=install_schema.json
+# access parameters of the host before install
+default_username: pi
+default_password: raspberry
 default_hostname: raspberrypi.local
 
 # access of the installed argus user
-arpi_username : 
-arpi_key_name : 
-arpi_password : 
-arpi_hostname : 
+arpi_username:
+arpi_key_name:
+arpi_password:
+arpi_hostname:
+deploy_ssh_key: true
+disable_ssh_password_authentication: true
 
 # database access
-argus_db_schema : argus
-argus_db_username : argus
-argus_db_password : 
-argus_db_content :
+argus_db_schema: argus
+argus_db_username: argus
+argus_db_password:
+argus_db_content:
 
 # deploy settings
-environment : 
+environment:
 server_path: server
 webapplication_path: webapplication/dist-production
 languages:
@@ -26,3 +29,4 @@ packages:
   postgresql_version:
   nginx_version:
 dhparam_size: 4096
+deploy_simulator: false

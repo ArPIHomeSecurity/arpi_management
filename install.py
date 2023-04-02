@@ -114,8 +114,11 @@ def install_environment():
     """
     Install prerequisites to an empty Raspberry PI.
     """
-    if not exists(CONFIG["arpi_key_name"]) and not exists(CONFIG["arpi_key_name"] + ".pub"):
-        generate_SSH_key(CONFIG["arpi_key_name"], CONFIG["arpi_password"])
+
+    # generate SSH key if the name is defined but it doesn't exist
+    if CONFIG["arpi_key_name"]:
+        if not exists(CONFIG["arpi_key_name"]) and not exists(CONFIG["arpi_key_name"] + ".pub"):
+            generate_SSH_key(CONFIG["arpi_key_name"], CONFIG["arpi_password"])
 
     dhparam_file = "arpi_dhparam.pem"
     if not exists(dhparam_file):
@@ -164,25 +167,28 @@ def install_environment():
     print_lines(output)
     ssh.close()
 
-    # waiting for user
-    # 1. deploy key can timeout
-    # 2. ssh accept password only from terminal
-    input("Waiting before deploying public key!")
-    command = f"ssh-copy-id -i {CONFIG['arpi_key_name']} {CONFIG['arpi_username']}@{CONFIG['default_hostname']}"
-    logger.info("Deploy public key: %s", command)
-    while subprocess.call(command, shell=True) != 0:
-        # retry after 2 seconds
-        sleep(2)
+    if CONFIG["arpi_key_name"] and CONFIG['deploy_ssh_key']:
+        # waiting for user
+        # 1. deploy key can timeout
+        # 2. ssh accept password only from terminal
+        input("Waiting before deploying public key!")
+        command = f"ssh-copy-id -i {CONFIG['arpi_key_name']} {CONFIG['arpi_username']}@{CONFIG['default_hostname']}"
+        logger.info("Deploy public key: %s", command)
+        while subprocess.call(command, shell=True) != 0:
+            # retry after 2 seconds
+            sleep(2)
 
-    ssh = get_connection()
+    if CONFIG["arpi_key_name"] and CONFIG['disable_ssh_password_authentication']:
+        ssh = get_connection()
+        execute_remote(
+            message="Switching to key based ssh authentication",
+            ssh=ssh,
+            command="sudo sed -i -E -e 's/.*PasswordAuthentication (yes|no)/PasswordAuthentication no/g' /etc/ssh/sshd_config",
+        )
 
-    execute_remote(
-        message="Enabling key based ssh authentication",
-        ssh=ssh,
-        command="sudo sed -i -E -e 's/.*PasswordAuthentication (yes|no)/PasswordAuthentication no/g' /etc/ssh/sshd_config",
-    )
-
+    # restart the host to activate the user
     execute_remote(message="Restarting the host", ssh=ssh, command="sudo reboot")
+    logger.info("Finished installing environment")
 
 
 def install_component(component, update=False, restart=False):
@@ -194,7 +200,7 @@ def install_component(component, update=False, restart=False):
     execute_remote(
         message="Creating server directories...",
         ssh=ssh,
-        command="mkdir -p  server/etc server/scripts server/src server/webapplication",
+        command="mkdir -p  server/etc server/scripts server/src webapplication",
     )
 
     logger.info("Copy common files...")
@@ -208,6 +214,7 @@ def install_component(component, update=False, restart=False):
             (join(CONFIG["server_path"], "src", "constants.py"), join("server", "src", "constants.py")),
             (join(CONFIG["server_path"], "src", "hash.py"), join("server", "src", "hash.py")),
             (join(CONFIG["server_path"], "src", "models.py"), join("server", "src", "models.py")),
+            (join(CONFIG["server_path"], "src", "tester.py"), join("server", "src", "tester.py")),
         ), CONFIG["progress"]
     )
     deep_copy(
@@ -223,12 +230,17 @@ def install_component(component, update=False, restart=False):
         CONFIG["progress"]
     )
 
-    if update:
-        execute_remote(
-            message="Start installing python packages on system...",
-            ssh=ssh,
-            command="cd server; sudo PIPENV_TIMEOUT=9999 pipenv install --system",
+    if CONFIG["deploy_simulator"]:
+        list_copy(
+            ssh,
+            (
+                (join(CONFIG["server_path"], "src", "simulator.py"), join("server", "src", "simulator.py")),
+                (join(CONFIG["server_path"], "channels.json"), join("server", "channels.json")),
+                (join(CONFIG["server_path"], "power.json"), join("server", "power.json")),
+            ), CONFIG["progress"]
         )
+
+    if update:
         execute_remote(
             message="Create virtual environment with python3 for argus...",
             ssh=ssh,
@@ -304,10 +316,10 @@ def install_webapplication(restart=False):
     execute_remote(
         message="Delete old webapplication on remote site...",
         ssh=ssh,
-        command="rm -R server/webapplication || true",
+        command="rm -R webapplication || true",
     )
 
-    target = join("server", "webapplication")
+    target = "webapplication"
     logger.info("Copy web application: %s => %s", CONFIG["webapplication_path"], target)
     deep_copy(ssh, CONFIG["webapplication_path"], target, "**/*", CONFIG["progress"])
 
