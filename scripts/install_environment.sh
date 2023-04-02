@@ -25,7 +25,7 @@ if ! id -u argus; then
   echo "argus ALL=(ALL) NOPASSWD: ALL" | sudo tee -a /etc/sudoers
 
   echo "## Install oh my zsh for argus"
-  sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install zsh curl git vim
+  sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install zsh curl git vim minicom
   set +x
   sudo su -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh) --unattended 2>&1 | cat" argus
   set -x
@@ -136,12 +136,12 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install \
 	python3-gi \
 	python3-dev \
   python3-pip \
-	python3-virtualenv \
   gcc \
   libgirepository1.0-dev \
   libcairo2-dev \
   pkg-config \
-  gir1.2-gtk-3.0
+  gir1.2-gtk-3.0 \
+  fail2ban
 
 echo "## Install wiringpi for pywiegand"
 git clone $QUIET https://github.com/WiringPi/WiringPi.git ~/wiringpi
