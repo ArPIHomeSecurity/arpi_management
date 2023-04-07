@@ -133,7 +133,6 @@ def install_environment():
         "ARPI_PASSWORD": CONFIG["arpi_password"],
         "ARGUS_DB_SCHEMA": CONFIG["argus_db_schema"],
         "ARGUS_DB_USERNAME": CONFIG["argus_db_username"],
-        "ARGUS_DB_PASSWORD": CONFIG["argus_db_password"],
         "ARPI_HOSTNAME": CONFIG["arpi_hostname"],
         "DHPARAM_FILE": join("/tmp", dhparam_file),
         # progress
@@ -311,17 +310,17 @@ def install_database():
     execute_remote(
         message="Initialize database...",
         ssh=ssh,
-        command="cd server; export $(grep -v '^#' .env | xargs -d '\\n'); flask db init",
+        command="cd server; export $(grep -hv '^#' .env secrets.env | xargs -d '\\n'); flask db init",
     )
     execute_remote(
         message="Migrate database...",
         ssh=ssh,
-        command="cd server; export $(grep -v '^#' .env | xargs -d '\\n'); flask db migrate",
+        command="cd server; export $(grep -hv '^#' .env secrets.env | xargs -d '\\n'); flask db migrate",
     )
     execute_remote(
         message="Upgrade database...",
         ssh=ssh,
-        command="cd server; export $(grep -v '^#' .env | xargs -d '\\n'); flask db upgrade",
+        command="cd server; export $(grep -hv '^#' .env secrets.env | xargs -d '\\n'); flask db upgrade",
     )
 
     execute_remote(

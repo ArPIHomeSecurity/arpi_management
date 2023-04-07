@@ -15,7 +15,6 @@ disable_ssh_password_authentication: true
 # database access
 argus_db_schema: argus
 argus_db_username: argus
-argus_db_password:
 argus_db_content:
 
 # deploy settings

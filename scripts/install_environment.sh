@@ -36,7 +36,6 @@ printf "\n\n# Database install\n"
 echo "## Install postgres"
 sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install postgresql-${POSTGRESQL_VERSION} postgresql-server-dev-all
 echo "## Configure access"
-sudo su -c "psql -c \"CREATE USER $ARGUS_DB_USERNAME WITH PASSWORD '$ARGUS_DB_PASSWORD';\"" postgres
 echo "## Create database"
 sudo su -c "createdb -E UTF8 -e $ARGUS_DB_SCHEMA" postgres
 
@@ -157,6 +156,17 @@ echo "## Configure systemd services"
 sudo cp -r /tmp/etc/systemd/* /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable argus_server argus_monitor nginx
+
+# generate secrets
+ARGUS_DB_PASSWORD="$(tr -dc 'A-Za-z0-9!#$*+' </dev/urandom | head -c 24  ; echo)"
+sudo su -c "psql -c \"CREATE USER $ARGUS_DB_USERNAME WITH PASSWORD '$ARGUS_DB_PASSWORD';\"" postgres
+sudo mkdir /home/argus/server
+sudo tee /home/argus/server/secrets.env > /dev/null <<EOL
+SALT=$(tr -dc 'A-Za-z0-9!#$*+-' </dev/urandom | head -c 24  ; echo)
+DB_PASSWORD=$ARGUS_DB_PASSWORD
+SECRET=$(tr -dc 'A-Za-z0-9!#$&()*+-.:;<=>?@{}' </dev/urandom | head -c 24  ; echo)
+EOL
+sudo chown -R argus:argus /home/argus/server
 
 echo "## Configure /run folder"
 # configuring the /run/argus temporary folder to create after every reboot

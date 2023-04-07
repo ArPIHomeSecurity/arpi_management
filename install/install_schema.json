@@ -46,10 +46,6 @@
             "type": "string",
             "title": "Argus database username"
         },
-        "argus_db_password": {
-            "type": "string",
-            "title": "Argus database password"
-        },
         "argus_db_content": {
             "type": "string",
             "title": "Argus database content (see server/data.py)"
@@ -106,7 +102,6 @@
         "disable_ssh_password_authentication",
         "argus_db_schema",
         "argus_db_username",
-        "argus_db_password",
         "argus_db_content",
         "environment",
         "server_path",
