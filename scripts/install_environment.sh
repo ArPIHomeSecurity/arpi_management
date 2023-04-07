@@ -151,7 +151,7 @@ cd ~
 echo "## Install pip packages"
 curl -OJ https://bootstrap.pypa.io/get-pip.py
 sudo python3 get-pip.py
-sudo pip3 install --progress-bar $PROGRESS pipenv importlib-resources
+sudo pip3 install --progress-bar $PROGRESS pipenv importlib-resources GitPython
 
 echo "## Configure systemd services"
 sudo cp -r /tmp/etc/systemd/* /etc/systemd/system/

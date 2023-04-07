@@ -168,7 +168,6 @@ def install_environment():
     logger.info("Starting install script...")
     channel.exec_command(f"{arguments}; ./install_environment.sh")
     print_lines(output)
-    ssh.close()
 
     if CONFIG["arpi_key_name"] and CONFIG['deploy_ssh_key']:
         # waiting for user
@@ -182,7 +181,6 @@ def install_environment():
             sleep(2)
 
     if CONFIG["arpi_key_name"] and CONFIG['disable_ssh_password_authentication']:
-        ssh = get_connection()
         execute_remote(
             message="Switching to key based ssh authentication",
             ssh=ssh,
@@ -193,6 +191,7 @@ def install_environment():
     execute_remote(message="Restarting the host", ssh=ssh, password="argus1", command="sudo reboot")
 
     retry = 0
+    ssh.close()
     ssh = None
     while not ssh:
         sleep(5)
@@ -354,7 +353,7 @@ def install_webapplication(restart=False):
         execute_remote(
             message="Restarting the service...",
             ssh=ssh,
-            command="sudo systemctl restart argus_server.service",
+            command="sudo systemctl restart nginx.service",
         )
 
 
