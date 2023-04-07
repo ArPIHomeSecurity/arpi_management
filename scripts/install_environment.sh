@@ -156,9 +156,7 @@ sudo pip3 install --progress-bar $PROGRESS pipenv importlib-resources GitPython
 echo "## Configure systemd services"
 sudo cp -r /tmp/etc/systemd/* /etc/systemd/system/
 sudo systemctl daemon-reload
-
-# only enable services if the python virtualenv is installed (otherwise after reboot the service will start to install it with sudo)
-sudo systemctl enable nginx.service
+sudo systemctl enable argus_server argus_monitor nginx
 
 echo "## Configure /run folder"
 # configuring the /run/argus temporary folder to create after every reboot
