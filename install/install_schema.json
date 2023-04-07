@@ -1,113 +1,124 @@
+
+
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "type": "object",
     "properties": {
-        "default_username": {
-            "type": "string",
-            "title": "Username before install"
+      "arpi_access": {
+        "type": "object",
+        "properties": {
+          "deploy_ssh_key": {
+            "type": "boolean"
+          },
+          "disable_ssh_password_authentication": {
+            "type": "boolean"
+          },
+          "hostname": {
+            "type": "string"
+          },
+          "key_name": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
         },
-        "default_password": {
-            "type": "string",
-            "title": "Password before install"
+        "required": [
+          "deploy_ssh_key",
+          "disable_ssh_password_authentication",
+          "hostname",
+          "key_name",
+          "password",
+          "username"
+        ]
+      },
+      "database": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "schema": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
         },
-        "default_hostname": {
-            "type": "string",
-            "title": "Hostname before install"
+        "required": [
+          "content",
+          "schema",
+          "username"
+        ]
+      },
+      "default_access": {
+        "type": "object",
+        "properties": {
+          "hostname": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
         },
-        "arpi_username": {
-            "type": "string",
-            "title": "Username for install"
-        },
-        "arpi_key_name": {
-            "type": "string",
-            "title": "SSH key for install"
-        },
-        "arpi_password": {
-            "type": "string",
-            "title": "SSH key passphrase of SSH password for install"
-        },
-        "arpi_hostname": {
-            "type": "string",
-            "title": "Hostname for install"
-        },
-        "deploy_ssh_key": {
-            "type": "boolean",
-            "title": "Deploy SSH public key"
-        },
-        "disable_ssh_password_authentication": {
-            "type": "boolean",
-            "title": "Disable password authentication and use only SSH key"
-        },
-        "argus_db_schema": {
-            "type": "string",
-            "title": "Argus database schema"
-        },
-        "argus_db_username": {
-            "type": "string",
-            "title": "Argus database username"
-        },
-        "argus_db_content": {
-            "type": "string",
-            "title": "Argus database content (see server/data.py)"
-        },
-        "environment": {
-            "type": "string",
-            "title": "Argus server environment (see server/*.env_)"
-        },
-        "server_path": {
-            "type": "string",
-            "title": "Path of the server source code in the source environment"
-        },
-        "webapplication_path": {
-            "type": "string",
-            "title": "Path of the webapplication package in the source environment"
-        },
-        "languages": {
-            "type": "array",
-            "items": [
-                {
-                    "type": "string",
-                    "title": "Language codes (see webapplication)"
-                }
-            ]
-        },
-        "packages": {
+        "required": [
+          "hostname",
+          "password",
+          "username"
+        ]
+      },
+      "deployment": {
+        "type": "object",
+        "properties": {
+          "deploy_simulator": {
+            "type": "boolean"
+          },
+          "dhparam_size": {
+            "type": "integer"
+          },
+          "packages": {
             "type": "object",
             "properties": {
-                "postgresql_version": {
-                    "type": "integer"
-                },
-                "nginx_version": {
-                    "type": "string"
-                }
+              "nginx_version": {
+                "type": "string"
+              },
+              "postgresql_version": {
+                "type": "integer"
+              }
             },
             "required": [
-                "postgresql_version",
-                "nginx_version"
+              "nginx_version",
+              "postgresql_version"
             ]
+          },
+          "server_environment": {
+            "type": "string"
+          },
+          "webapplication_path": {
+            "type": "string"
+          }
         },
-        "dhparam_size": {
-            "type": "integer"
-        }
+        "required": [
+          "deploy_simulator",
+          "dhparam_size",
+          "packages",
+          "server_environment",
+          "webapplication_path"
+        ]
+      }
     },
     "required": [
-        "default_username",
-        "default_password",
-        "default_hostname",
-        "arpi_username",
-        "arpi_key_name",
-        "arpi_password",
-        "arpi_hostname",
-        "deploy_ssh_key",
-        "disable_ssh_password_authentication",
-        "argus_db_schema",
-        "argus_db_username",
-        "argus_db_content",
-        "environment",
-        "server_path",
-        "webapplication_path",
-        "languages",
-        "packages",
-        "dhparam_size"
+      "arpi_access",
+      "database",
+      "default_access",
+      "deployment"
     ]
-}
+  }
+  
+  
