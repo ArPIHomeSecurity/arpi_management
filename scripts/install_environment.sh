@@ -158,13 +158,13 @@ sudo systemctl daemon-reload
 sudo systemctl enable argus_server argus_monitor nginx
 
 # generate secrets
-ARGUS_DB_PASSWORD="$(tr -dc 'A-Za-z0-9!#$*+' </dev/urandom | head -c 24  ; echo)"
+ARGUS_DB_PASSWORD="$(tr -dc 'A-Za-z0-9!#*+' </dev/urandom | head -c 24  ; echo)"
 sudo su -c "psql -c \"CREATE USER $ARGUS_DB_USERNAME WITH PASSWORD '$ARGUS_DB_PASSWORD';\"" postgres
 sudo mkdir /home/argus/server
 sudo tee /home/argus/server/secrets.env > /dev/null <<EOL
-SALT=$(tr -dc 'A-Za-z0-9!#$*+-' </dev/urandom | head -c 24  ; echo)
-DB_PASSWORD=$ARGUS_DB_PASSWORD
-SECRET=$(tr -dc 'A-Za-z0-9!#$&()*+-.:;<=>?@{}' </dev/urandom | head -c 24  ; echo)
+SALT="$(tr -dc 'A-Za-z0-9!#$*+-' </dev/urandom | head -c 24  ; echo)"
+DB_PASSWORD="$ARGUS_DB_PASSWORD"
+SECRET="$(tr -dc 'A-Za-z0-9!#$&()*+-.:;<=>?@{}' </dev/urandom | head -c 24  ; echo)"
 EOL
 sudo chown -R argus:argus /home/argus/server
 

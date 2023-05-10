@@ -322,17 +322,17 @@ def install_database(arpi_access, database):
     execute_remote(
         message="Initialize database...",
         ssh=ssh,
-        command="cd server; export $(grep -hv '^#' .env secrets.env | xargs -d '\\n'); flask db init",
+        command="cd server; export $(grep -hv '^#' .env secrets.env | sed 's/\"//g' | xargs -d '\\n'); printenv; flask db init",
     )
     execute_remote(
         message="Migrate database...",
         ssh=ssh,
-        command="cd server; export $(grep -hv '^#' .env secrets.env | xargs -d '\\n'); flask db migrate",
+        command="cd server; export $(grep -hv '^#' .env secrets.env | sed 's/\"//g' | xargs -d '\\n'); printenv; flask db migrate",
     )
     execute_remote(
         message="Upgrade database...",
         ssh=ssh,
-        command="cd server; export $(grep -hv '^#' .env secrets.env | xargs -d '\\n'); flask db upgrade",
+        command="cd server; export $(grep -hv '^#' .env secrets.env | sed 's/\"//g' | xargs -d '\\n'); printenv; flask db upgrade",
     )
 
     execute_remote(
