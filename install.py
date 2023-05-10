@@ -306,11 +306,11 @@ def install_server(arpi_access, deployment, update=False, restart=False, progres
     install_component(arpi_access, deployment, "server", update=update, restart=restart, progress=progress)
 
 
-def install_monitoring(arpi_access, deployment, update=False, restart=False, progress=False):
+def install_monitor(arpi_access, deployment, update=False, restart=False, progress=False):
     """
     Install the monitor component to a Raspberry PI.
     """
-    install_component(arpi_access, deployment, "monitoring", update=update, restart=restart, progress=progress)
+    install_component(arpi_access, deployment, "monitor", update=update, restart=restart, progress=progress)
 
 
 def install_database(arpi_access, database):
@@ -392,7 +392,7 @@ def main(argv=None):  # IGNORE:C0111
         )
         parser.add_argument(
             "component",
-            choices=["environment", "server", "monitoring", "webapplication", "database"],
+            choices=["environment", "server", "monitor", "webapplication", "database"],
         )
         parser.add_argument(
             "-e",
@@ -440,8 +440,8 @@ def main(argv=None):  # IGNORE:C0111
             install_environment(config["default_access"], config["arpi_access"], config["database"], config["deployment"], args.progress)
         elif args.component == "server":
             install_server(config["arpi_access"], config["deployment"], args.update, args.restart, args.progress)
-        elif args.component == "monitoring":
-            install_monitoring(config["arpi_access"], config["deployment"], args.update, args.restart, args.progress)
+        elif args.component == "monitor":
+            install_monitor(config["arpi_access"], config["deployment"], args.update, args.restart, args.progress)
         elif args.component == "webapplication":
             install_webapplication(config["arpi_access"], config["deployment"], args.restart)
         elif args.component == "database":
