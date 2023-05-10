@@ -91,15 +91,15 @@ def get_arpi_connection(access):
     try:
         logger.info(
             "Connecting with private key in '%s' %s@%s",
-            access["key_name"],
+            access.get("key_name", "-"),
             access["username"],
             access["hostname"],
         )
 
         private_key = None
-        if exists(access["key_name"]):
+        if exists(access.get("key_name", "")):
             private_key = paramiko.RSAKey.from_private_key_file(
-                access["key_name"], access["password"]
+                access.get("key_name", ""), access["password"]
             )
 
         ssh = paramiko.SSHClient()
@@ -125,11 +125,11 @@ def install_environment(default_access, arpi_access, database, deployment, progr
 
     # generate SSH key if the name is defined but it doesn't exist
     if (
-        arpi_access["key_name"]
-        and not exists(arpi_access["key_name"])
-        and not exists(arpi_access["key_name"] + ".pub")
+        arpi_access.get("key_name", "")
+        and not exists(arpi_access.get("key_name", ""))
+        and not exists(arpi_access.get("key_name", "") + ".pub")
     ):
-        generate_SSH_key(arpi_access["key_name"], arpi_access["password"])
+        generate_SSH_key(arpi_access.get("key_name", ""), arpi_access["password"])
 
     dhparam_file = "arpi_dhparam.pem"
     if not exists(dhparam_file):
@@ -179,18 +179,18 @@ def install_environment(default_access, arpi_access, database, deployment, progr
     channel.exec_command(f"{arguments}; ./install_environment.sh")
     print_lines(output)
 
-    if arpi_access["key_name"] and arpi_access['deploy_ssh_key']:
+    if arpi_access.get("key_name", "") and arpi_access['deploy_ssh_key']:
         # waiting for user
         # 1. deploy key can timeout
         # 2. ssh accept password only from terminal
         input("Waiting before deploying public key!")
-        command = f"ssh-copy-id -i {arpi_access['key_name']} {arpi_access['username']}@{default_access['hostname']}"
+        command = f"ssh-copy-id -i {arpi_access.get('key_name', '')} {arpi_access['username']}@{default_access['hostname']}"
         logger.info("Deploy public key: %s", command)
         while subprocess.call(command, shell=True) != 0:
             # retry after 2 seconds
             sleep(2)
 
-    if arpi_access["key_name"] and arpi_access['disable_ssh_password_authentication']:
+    if arpi_access.get("key_name", "") and arpi_access['disable_ssh_password_authentication']:
         execute_remote(
             message="Switching to key based ssh authentication",
             ssh=ssh,

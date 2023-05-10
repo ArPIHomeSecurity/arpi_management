@@ -30,7 +30,6 @@
           "deploy_ssh_key",
           "disable_ssh_password_authentication",
           "hostname",
-          "key_name",
           "password",
           "username"
         ]
