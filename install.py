@@ -198,7 +198,7 @@ def install_environment(default_access, arpi_access, database, deployment, progr
         )
 
     # restart the host to activate the user
-    execute_remote(message="Restarting the host", ssh=ssh, password="argus1", command="sudo reboot")
+    execute_remote(message="Restarting the host", ssh=ssh, command="sudo reboot")
 
     retry = 0
     ssh.close()
