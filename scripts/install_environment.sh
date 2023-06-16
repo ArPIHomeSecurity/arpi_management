@@ -129,6 +129,7 @@ cd ~
 printf "\n\n# Install and configure common tools"
 echo "## Install python3 and packages"
 sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install \
+  dnsutils \
 	python3 \
 	python3-gpiozero \
 	python3-gi \
