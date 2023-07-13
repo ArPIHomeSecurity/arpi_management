@@ -150,7 +150,9 @@ cd ~
 
 echo "## Install pip packages"
 curl -OJ https://bootstrap.pypa.io/get-pip.py
-sudo python3 get-pip.py
+# install pip but supress the output to avoid error in ssh installer
+# "UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe2 in position 2047: unexpected end of data"
+sudo python3 get-pip.py --quiet
 sudo pip3 install --progress-bar $PROGRESS pipenv importlib-resources GitPython
 
 echo "## Configure systemd services"
