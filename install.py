@@ -313,7 +313,7 @@ def install_monitor(arpi_access, deployment, update=False, restart=False, progre
     install_component(arpi_access, deployment, "monitor", update=update, restart=restart, progress=progress)
 
 
-def install_database(arpi_access, database):
+def install_database(arpi_access, database, update=False):
     """
     Install the database component to a Raspberry PI.
     """
@@ -335,11 +335,12 @@ def install_database(arpi_access, database):
         command="cd server; export $(grep -hv '^#' .env secrets.env | sed 's/\"//g' | xargs -d '\\n'); printenv; flask db upgrade",
     )
 
-    execute_remote(
-        message="Updating database content...",
-        ssh=ssh,
-        command=f"cd server; src/data.py -d -c {database['content']}",
-    )
+    if update:
+        execute_remote(
+            message="Updating database content...",
+            ssh=ssh,
+            command=f"cd server; src/data.py -d -c {database['content']}",
+        )
 
     ssh.close()
 
@@ -445,7 +446,7 @@ def main(argv=None):  # IGNORE:C0111
         elif args.component == "webapplication":
             install_webapplication(config["arpi_access"], config["deployment"], args.restart)
         elif args.component == "database":
-            install_database(config["arpi_access"], config["database"])
+            install_database(config["arpi_access"], config["database"], args.update)
         else:
             logger.error("Unknown component: %s", args.component)
 
