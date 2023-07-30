@@ -29,6 +29,9 @@ if ! id -u argus; then
   sudo su -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh) --unattended 2>&1 | cat" argus
   set -x
   sudo chsh -s /bin/zsh argus
+
+  # move the version manamgement script to the argus user
+  sudo mv ~/manage_versions.py /home/argus
 fi
 
 # DATABASE
