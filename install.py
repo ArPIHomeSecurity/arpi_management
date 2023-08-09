@@ -73,9 +73,10 @@ def get_default_connection(access):
         logger.info("Connecting %s@%s with %s", access["username"], access["hostname"], access["password"])
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(
-            access["hostname"],
+            hostname=access["hostname"],
+            port=access.get("port", 22),
             username=access["username"],
-            password=access["password"],
+            password=access["password"]
         )
         logger.info("Connected")
     except (SSHException, gaierror) as error:
@@ -107,6 +108,7 @@ def get_arpi_connection(access):
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(
             hostname=access["hostname"],
+            port=access.get("port", 22),
             username=access["username"],
             password=access["password"],
             pkey=private_key,
