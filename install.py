@@ -395,15 +395,15 @@ def main(argv=None):  # IGNORE:C0111
         )
         parser.add_argument(
             "component",
-            choices=["environment", "server", "monitor", "webapplication", "database"],
+            choices=["environment", "server", "monitor", "database", "webapplication"],
         )
         parser.add_argument(
             "-e",
             "--env",
             dest="environment",
-            default="",
+            default="install",
             required=True,
-            help="Select a different config (install/{environment}.yaml)",
+            help="Select a different config (install/{environment}.yaml) default:environment=install",
         )
         parser.add_argument(
             "-r",
@@ -428,6 +428,8 @@ def main(argv=None):  # IGNORE:C0111
         args = parser.parse_args()
         logger.setLevel(args.verbose)
 
+        # name of the folder is the same as the name of the script
+        # the name of the file is the environment argument
         config_filename = join(basename(__file__).replace(".py", ""), f"{args.environment}.yaml")
 
         logger.info("Working with %s", args)
