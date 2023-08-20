@@ -5,7 +5,10 @@ __pycache__
 /pyenv/
 
 /*_rsa*
+/keys
 
-/install.*.yaml
+/install/*.yaml
+!/install/install.yaml
 *.pem
 *.log
+*.tar.gz

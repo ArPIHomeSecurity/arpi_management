@@ -1,0 +1,11 @@
+{
+    "fileheader.author": "Gábor Kovács",
+    "python.linting.flake8Enabled": true,
+    "python.linting.pylintEnabled": false,
+    "python.linting.enabled": true,
+    "python.formatting.provider": "black",
+    "cSpell.words": [
+        "addrs",
+        "ADGSM"
+    ]
+}

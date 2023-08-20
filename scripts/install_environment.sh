@@ -22,14 +22,16 @@ if ! id -u argus; then
   echo "## Creating user"
   sudo useradd -G sudo -m argus
   echo "argus:$ARPI_PASSWORD" | sudo chpasswd
-  echo "argus ALL=(ALL) NOPASSWD: ALL" | sudo tee -a /etc/sudoers
 
   echo "## Install oh my zsh for argus"
-  sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install zsh curl git vim
+  sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install zsh curl git vim minicom
   set +x
   sudo su -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh) --unattended 2>&1 | cat" argus
   set -x
   sudo chsh -s /bin/zsh argus
+
+  # move the version manamgement script to the argus user
+  sudo mv ~/manage_versions.py /home/argus
 fi
 
 # DATABASE
@@ -37,7 +39,6 @@ printf "\n\n# Database install\n"
 echo "## Install postgres"
 sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install postgresql-${POSTGRESQL_VERSION} postgresql-server-dev-all
 echo "## Configure access"
-sudo su -c "psql -c \"CREATE USER $ARGUS_DB_USERNAME WITH PASSWORD '$ARGUS_DB_PASSWORD';\"" postgres
 echo "## Create database"
 sudo su -c "createdb -E UTF8 -e $ARGUS_DB_SCHEMA" postgres
 
@@ -131,17 +132,17 @@ cd ~
 printf "\n\n# Install and configure common tools"
 echo "## Install python3 and packages"
 sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install \
+  dnsutils \
 	python3 \
 	python3-gpiozero \
 	python3-gi \
 	python3-dev \
-  python3-pip \
-	python3-virtualenv \
   gcc \
   libgirepository1.0-dev \
   libcairo2-dev \
   pkg-config \
-  gir1.2-gtk-3.0
+  gir1.2-gtk-3.0 \
+  fail2ban
 
 echo "## Install wiringpi for pywiegand"
 git clone $QUIET https://github.com/WiringPi/WiringPi.git ~/wiringpi
@@ -150,15 +151,28 @@ cd ~/wiringpi
 sudo ldconfig
 cd ~
 
-echo "## Install pipenv latest"
-sudo pip3 install --upgrade --progress-bar $PROGRESS pipenv
+echo "## Install pip packages"
+curl -OJ https://bootstrap.pypa.io/get-pip.py
+# install pip but supress the output to avoid error in ssh installer
+# "UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe2 in position 2047: unexpected end of data"
+sudo python3 get-pip.py --quiet
+sudo pip3 install --progress-bar $PROGRESS pipenv importlib-resources GitPython
 
 echo "## Configure systemd services"
 sudo cp -r /tmp/etc/systemd/* /etc/systemd/system/
 sudo systemctl daemon-reload
+sudo systemctl enable argus_server argus_monitor nginx
 
-# only enable services if the python virtualenv is installed (otherwise after reboot the service will start to install it with sudo)
-sudo systemctl enable nginx.service
+# generate secrets
+ARGUS_DB_PASSWORD="$(tr -dc 'A-Za-z0-9!#*+' </dev/urandom | head -c 24  ; echo)"
+sudo su -c "psql -c \"CREATE USER $ARGUS_DB_USERNAME WITH PASSWORD '$ARGUS_DB_PASSWORD';\"" postgres
+sudo mkdir /home/argus/server
+sudo tee /home/argus/server/secrets.env > /dev/null <<EOL
+SALT="$(tr -dc 'A-Za-z0-9!#$*+-' </dev/urandom | head -c 24  ; echo)"
+DB_PASSWORD="$ARGUS_DB_PASSWORD"
+SECRET="$(tr -dc 'A-Za-z0-9!#$&()*+-.:;<=>?@{}' </dev/urandom | head -c 24  ; echo)"
+EOL
+sudo chown -R argus:argus /home/argus/server
 
 echo "## Configure /run folder"
 # configuring the /run/argus temporary folder to create after every reboot

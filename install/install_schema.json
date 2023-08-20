@@ -1,0 +1,123 @@
+
+
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "properties": {
+      "arpi_access": {
+        "type": "object",
+        "properties": {
+          "deploy_ssh_key": {
+            "type": "boolean"
+          },
+          "disable_ssh_password_authentication": {
+            "type": "boolean"
+          },
+          "hostname": {
+            "type": "string"
+          },
+          "key_name": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deploy_ssh_key",
+          "disable_ssh_password_authentication",
+          "hostname",
+          "password",
+          "username"
+        ]
+      },
+      "database": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "schema": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "content",
+          "schema",
+          "username"
+        ]
+      },
+      "default_access": {
+        "type": "object",
+        "properties": {
+          "hostname": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hostname",
+          "password",
+          "username"
+        ]
+      },
+      "deployment": {
+        "type": "object",
+        "properties": {
+          "deploy_simulator": {
+            "type": "boolean"
+          },
+          "dhparam_size": {
+            "type": "integer"
+          },
+          "packages": {
+            "type": "object",
+            "properties": {
+              "nginx_version": {
+                "type": "string"
+              },
+              "postgresql_version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "nginx_version",
+              "postgresql_version"
+            ]
+          },
+          "server_environment": {
+            "type": "string"
+          },
+          "webapplication_path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deploy_simulator",
+          "dhparam_size",
+          "packages",
+          "server_environment",
+          "webapplication_path"
+        ]
+      }
+    },
+    "required": [
+      "arpi_access",
+      "database",
+      "default_access",
+      "deployment"
+    ]
+  }
+  
+  

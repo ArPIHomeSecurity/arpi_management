@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=install_schema.json
+# access parameters of the host before install
+default_access:
+  username: pi
+  password: raspberry
+  hostname: raspberrypi.local
+
+# access of the installed arpi system
+arpi_access:
+  username:
+  key_name:
+  password:
+  hostname:
+  deploy_ssh_key: true
+  disable_ssh_password_authentication: true
+
+database:
+  schema: argus
+  username: argus
+  content:
+
+deployment:
+  server_environment:
+  webapplication_path: webapplication/dist-production
+  packages:
+    postgresql_version:
+    nginx_version:
+  dhparam_size: 4096
+  deploy_simulator: false

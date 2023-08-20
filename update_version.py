@@ -6,7 +6,7 @@ import sys
 
 from utils import get_repository_version
 
-__version__ = "V0.8.00"
+__version__ = "V0.9.0"
 
 
 def replace(filename, placeholder, value):

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python3
 
 import os
 import contextlib
@@ -115,7 +115,11 @@ def update_server(version):
 
     # remove old files
     # cleanup_folder(working_directory)
-    shutil.rmtree(working_directory)
+    try:
+        shutil.rmtree(working_directory)
+    except PermissionError as error:
+        logging.info("Failed to delete '%s'! %s", working_directory, error)
+
 
     # copy the new version
     shutil.copytree(os.path.join(TEMP_DIR, "arpi-server"), working_directory)
