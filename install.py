@@ -155,8 +155,11 @@ def install_environment(default_access, arpi_access, database, deployment, progr
         "ARPI_PASSWORD": arpi_access["password"],
         "ARGUS_DB_SCHEMA": database["schema"],
         "ARGUS_DB_USERNAME": database["username"],
+        "ARGUS_DB_PASSWORD": database.get("password", ""),
         "ARPI_HOSTNAME": arpi_access["hostname"],
         "DHPARAM_FILE": join("/tmp", dhparam_file),
+        "SALT": deployment["salt"],
+        "SECRET": deployment["secret"],
         # progress
         "QUIET": "" if progress else "-q",
         "PROGRESS": "on" if progress else "off"
