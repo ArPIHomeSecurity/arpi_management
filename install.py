@@ -90,12 +90,21 @@ def get_arpi_connection(access):
     Returns the connection to the remote host
     """
     try:
-        logger.info(
-            "Connecting with private key in '%s' %s@%s",
-            access.get("key_name", "-"),
-            access["username"],
-            access["hostname"],
-        )
+        if access.get("key_name", "") and exists(access.get("key_name", "")):
+            logger.info(
+                "Connecting with private key '%s' %s@%s:%s",
+                access.get("key_name", "-"),
+                access["username"],
+                access["hostname"],
+                access.get("port", 22)
+            )
+        elif access.get("key_name", "") == "":
+            logger.info(
+                "Connecting with password %s@%s:%s",
+                access["username"],
+                access["hostname"],
+                access.get("port", 22)
+            )
 
         private_key = None
         if exists(access.get("key_name", "")):
