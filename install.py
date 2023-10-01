@@ -304,10 +304,10 @@ def install_component(arpi_access, deployment, component, update=False, restart=
 
     if restart:
         execute_remote(
-            message="Restarting the service...",
+            message=f"Restarting the '{component}' service...",
             ssh=ssh,
             password=arpi_access["password"],
-            command="sudo systemctl restart argus_monitor.service argus_server.service",
+            command=f"sudo systemctl restart argus_{component}.service",
         )
 
     ssh.close()
