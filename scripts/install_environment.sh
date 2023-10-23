@@ -134,9 +134,10 @@ echo "## Install python3 and packages"
 sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install \
   dnsutils \
 	python3 \
+  python3-cryptography \
+	python3-dev \
 	python3-gpiozero \
 	python3-gi \
-	python3-dev \
   gcc \
   libgirepository1.0-dev \
   libcairo2-dev \
