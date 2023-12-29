@@ -90,12 +90,21 @@ def get_arpi_connection(access):
     Returns the connection to the remote host
     """
     try:
-        logger.info(
-            "Connecting with private key in '%s' %s@%s",
-            access.get("key_name", "-"),
-            access["username"],
-            access["hostname"],
-        )
+        if access.get("key_name", "") and exists(access.get("key_name", "")):
+            logger.info(
+                "Connecting with private key '%s' %s@%s:%s",
+                access.get("key_name", "-"),
+                access["username"],
+                access["hostname"],
+                access.get("port", 22)
+            )
+        elif access.get("key_name", "") == "":
+            logger.info(
+                "Connecting with password %s@%s:%s",
+                access["username"],
+                access["hostname"],
+                access.get("port", 22)
+            )
 
         private_key = None
         if exists(access.get("key_name", "")):
@@ -146,8 +155,11 @@ def install_environment(default_access, arpi_access, database, deployment, progr
         "ARPI_PASSWORD": arpi_access["password"],
         "ARGUS_DB_SCHEMA": database["schema"],
         "ARGUS_DB_USERNAME": database["username"],
+        "ARGUS_DB_PASSWORD": database.get("password", ""),
         "ARPI_HOSTNAME": arpi_access["hostname"],
         "DHPARAM_FILE": join("/tmp", dhparam_file),
+        "SALT": deployment["salt"],
+        "SECRET": deployment["secret"],
         # progress
         "QUIET": "" if progress else "-q",
         "PROGRESS": "on" if progress else "off"
@@ -292,10 +304,10 @@ def install_component(arpi_access, deployment, component, update=False, restart=
 
     if restart:
         execute_remote(
-            message="Restarting the service...",
+            message=f"Restarting the '{component}' service...",
             ssh=ssh,
             password=arpi_access["password"],
-            command="sudo systemctl restart argus_monitor.service argus_server.service",
+            command=f"sudo systemctl restart argus_{component}.service",
         )
 
     ssh.close()
@@ -324,17 +336,17 @@ def install_database(arpi_access, database, update=False):
     execute_remote(
         message="Initialize database...",
         ssh=ssh,
-        command="cd server; export $(grep -hv '^#' .env secrets.env | sed 's/\"//g' | xargs -d '\\n'); printenv; flask db init",
+        command="cd server; export $(grep -hv '^#' .env secrets.env | sed 's/\"//g' | xargs -d '\\n'); printenv; flask --app server:app db init",
     )
     execute_remote(
         message="Migrate database...",
         ssh=ssh,
-        command="cd server; export $(grep -hv '^#' .env secrets.env | sed 's/\"//g' | xargs -d '\\n'); printenv; flask db migrate",
+        command="cd server; export $(grep -hv '^#' .env secrets.env | sed 's/\"//g' | xargs -d '\\n'); printenv; flask --app server:app db migrate",
     )
     execute_remote(
         message="Upgrade database...",
         ssh=ssh,
-        command="cd server; export $(grep -hv '^#' .env secrets.env | sed 's/\"//g' | xargs -d '\\n'); printenv; flask db upgrade",
+        command="cd server; export $(grep -hv '^#' .env secrets.env | sed 's/\"//g' | xargs -d '\\n'); printenv; flask --app server:app db upgrade",
     )
 
     if update:

@@ -134,9 +134,10 @@ echo "## Install python3 and packages"
 sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install \
   dnsutils \
 	python3 \
+  python3-cryptography \
+	python3-dev \
 	python3-gpiozero \
 	python3-gi \
-	python3-dev \
   gcc \
   libgirepository1.0-dev \
   libcairo2-dev \
@@ -164,13 +165,21 @@ sudo systemctl daemon-reload
 sudo systemctl enable argus_server argus_monitor nginx
 
 # generate secrets
-ARGUS_DB_PASSWORD="$(tr -dc 'A-Za-z0-9!#*+' </dev/urandom | head -c 24  ; echo)"
+if [ -z "$ARGUS_DB_PASSWORD" ]; then
+  ARGUS_DB_PASSWORD="$(tr -dc 'A-Za-z0-9!#*+' </dev/urandom | head -c 24  ; echo)"
+fi
+if [ -z "$SALT" ]; then
+  SALT="$(tr -dc 'A-Za-z0-9!#$*+-' </dev/urandom | head -c 24  ; echo)"
+fi 
+if [ -z "$SECRET" ]; then
+  SECRET="$(tr -dc 'A-Za-z0-9!#$&()*+-.:;<=>?@{}' </dev/urandom | head -c 24  ; echo)"
+fi
 sudo su -c "psql -c \"CREATE USER $ARGUS_DB_USERNAME WITH PASSWORD '$ARGUS_DB_PASSWORD';\"" postgres
 sudo mkdir /home/argus/server
 sudo tee /home/argus/server/secrets.env > /dev/null <<EOL
-SALT="$(tr -dc 'A-Za-z0-9!#$*+-' </dev/urandom | head -c 24  ; echo)"
+SALT="$SALT"
 DB_PASSWORD="$ARGUS_DB_PASSWORD"
-SECRET="$(tr -dc 'A-Za-z0-9!#$&()*+-.:;<=>?@{}' </dev/urandom | head -c 24  ; echo)"
+SECRET="$SECRET"
 EOL
 sudo chown -R argus:argus /home/argus/server
 
