@@ -58,6 +58,7 @@ sudo cp $DHPARAM_FILE /etc/mosquitto/certs/
 sudo cp -t /etc/mosquitto/certs/ /tmp/arpi.local.key /tmp/arpi.local.cert
 sudo chown -R mosquitto: /etc/mosquitto/certs
 sudo cp /tmp/etc/mosquitto/auth.conf /etc/mosquitto/conf.d/
+sudo cp /tmp/etc/mosquitto/logging.conf /etc/mosquitto/conf.d/
 sudo mkdir -p /etc/mosquitto/configs-available/
 sudo cp /tmp/etc/mosquitto/ssl*.conf /etc/mosquitto/configs-available/
 sudo ln -s /etc/mosquitto/configs-available/ssl-self-signed.conf /etc/mosquitto/conf.d/ssl.conf
