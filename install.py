@@ -285,12 +285,16 @@ def install_component(arpi_access, deployment, component, update=False, restart=
     )
 
     if deployment["deploy_simulator"]:
+        execute_remote(
+            message="Creating simulator directory...",
+            ssh=ssh,
+            command="mkdir -p  server/src/simulator",
+        )
         list_copy(
             ssh,
             (
-                (join("server", "src", "simulator.py"), join("server", "src", "simulator.py")),
-                (join("server", "channels.json"), join("server", "channels.json")),
-                (join("server", "power.json"), join("server", "power.json")),
+                (join("server", "src", "simulator", "simulator.py"), join("server", "src", "simulator", "simulator.py")),
+                (join("server", "src", "simulator", "simulator.tcss"), join("server", "src", "simulator", "simulator.tcss"))
             ), progress
         )
 
