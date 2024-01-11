@@ -325,26 +325,29 @@ def install_monitor(arpi_access, deployment, update=False, restart=False, progre
     install_component(arpi_access, deployment, "monitor", update=update, restart=restart, progress=progress)
 
 
-def install_database(arpi_access, database, update=False):
+def install_database(arpi_access, database, update=False, progress=False):
     """
     Install the database component to a Raspberry PI.
     """
     ssh = get_arpi_connection(arpi_access)
 
-    execute_remote(
-        message="Initialize database...",
-        ssh=ssh,
-        command="cd server; export $(grep -hv '^#' .env secrets.env | sed 's/\"//g' | xargs -d '\\n'); printenv; flask --app server:app db init",
+    logger.info("Copy migrations...")
+    deep_copy(
+        ssh,
+        join("server", "migrations"),
+        join("server", "migrations"),
+        "**/*",
+        progress
     )
-    execute_remote(
-        message="Migrate database...",
-        ssh=ssh,
-        command="cd server; export $(grep -hv '^#' .env secrets.env | sed 's/\"//g' | xargs -d '\\n'); printenv; flask --app server:app db migrate",
-    )
+
     execute_remote(
         message="Upgrade database...",
         ssh=ssh,
-        command="cd server; export $(grep -hv '^#' .env secrets.env | sed 's/\"//g' | xargs -d '\\n'); printenv; flask --app server:app db upgrade",
+        command="""cd server; \
+            export $(grep -hv '^#' .env secrets.env | sed 's/\"//g' | xargs -d '\\n'); \
+            printenv; \
+            flask --app server:app db upgrade
+        """
     )
 
     if update:
@@ -460,7 +463,7 @@ def main(argv=None):  # IGNORE:C0111
         elif args.component == "webapplication":
             install_webapplication(config["arpi_access"], config["deployment"], args.restart)
         elif args.component == "database":
-            install_database(config["arpi_access"], config["database"], args.update)
+            install_database(config["arpi_access"], config["database"], args.update, args.progress)
         else:
             logger.error("Unknown component: %s", args.component)
 

@@ -71,6 +71,9 @@ def list_copy(ssh, files, progress):
 
 
 def deep_copy(ssh, source, target, filter, progress):
+    """
+    Copy files from source to target recursively
+    """
     _, stdout, stderr = ssh.exec_command(f"mkdir -p {target}")
     print_ssh_output(stdout, stderr)
 
