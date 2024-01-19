@@ -9,7 +9,6 @@ import contextlib
 import glob
 import logging
 import os.path
-import subprocess
 from os import listdir
 from os.path import isfile, join
 from textwrap import indent
@@ -97,20 +96,6 @@ def deep_copy(ssh, source, target, filter, progress):
     if uploaded_files:
         logger.debug("Files copied:\n%s\n", indent('\n'.join(sorted(uploaded_files)), "  "))
     uploaded_files.clear()
-
-
-def get_repository_version(path):
-    branch = (
-        subprocess.check_output(["git", "-C", path, "rev-parse", "--abbrev-ref", "HEAD"])
-        .strip()
-        .decode("utf-8")
-    )
-    commit = (
-        subprocess.check_output(["git", "-C", path, "rev-parse", "HEAD"])
-        .strip()
-        .decode("utf-8")[:7]
-    )
-    return f"{branch}-{commit}"
 
 
 def generate_SSH_key(key_name, passphrase):

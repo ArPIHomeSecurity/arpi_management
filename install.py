@@ -30,7 +30,7 @@ import yaml
 from paramiko.ssh_exception import SSHException
 from scp import SCPClient
 
-from utils import (
+from install_utils import (
     deep_copy,
     execute_remote,
     generate_SSH_key,

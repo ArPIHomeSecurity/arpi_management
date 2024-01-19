@@ -4,17 +4,18 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+invoke = "*"
 pyyaml = "*"
 paramiko = "*"
 scp = "*"
-black = "*"
+sh = "*"
 
 [dev-packages]
-flake8 = "*"
 black = "*"
-rope = "*"
+flake8 = "*"
 pyinvoke = "*"
 pylint = "*"
+rope = "*"
 
 [requires]
 python_version = "3"
