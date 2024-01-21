@@ -39,12 +39,12 @@ def update_version_files(version):
     """
     Updates the version files of the server and webapplication.
     """
-    server_version = f"V{version}:{get_repository_version('server')}"
+    server_version = f"{version}:{get_repository_version('server')}"
     print(f"Update server version: {server_version}")
     with open("server/src/server/version.py", "w", encoding="utf-8") as f:
         f.write(f'__version__="{server_version}"')
 
-    webapplication_version = f"V{version}:" + get_repository_version("webapplication")
+    webapplication_version = f"{version}:" + get_repository_version("webapplication")
     print(f"Update webapplication version: {webapplication_version}")
     with open("webapplication/src/app/version.ts", "w", encoding="utf-8") as f:
         f.write(f'export const VERSION = "{webapplication_version}"')
@@ -55,7 +55,6 @@ def tag_repository(version, path):
     Tags the repository with the given version and pushes it to the origin.
     """
     print(f"Tagging repository with version {version}")
-    return
     with pushd(path):
-        git.tag(version=version, message=f"Release {version}")
-        git.push("origin", "--tags")
+        git("tag", version, "--message", f"Release {version}")
+
