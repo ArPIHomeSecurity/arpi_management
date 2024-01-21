@@ -24,7 +24,7 @@ if ! id -u argus; then
   echo "argus:$ARPI_PASSWORD" | sudo chpasswd
 
   echo "## Install oh my zsh for argus"
-  sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install zsh curl git vim minicom
+  sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install zsh curl git vim minicom net-tools telnet
   set +x
   sudo su -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh) --unattended 2>&1 | cat" argus
   set -x
@@ -34,11 +34,39 @@ if ! id -u argus; then
   sudo mv ~/manage_versions.py /home/argus
 fi
 
+# CERTIFICATE
+printf "\n\n## Create self signed certificate\n"
+cd /tmp
+openssl req -new -newkey rsa:4096 -nodes -x509 \
+     -subj "/C=HU/ST=Fejér/L=Baracska/O=ArPI/CN=arpi.local" \
+     -keyout arpi.local.key \
+     -out arpi.local.cert
+cd ~
+
+# MQTT
+printf "\n\n# Install MQTT broker\n"
+echo "## Install mosquitto"
+cd /tmp
+wget http://repo.mosquitto.org/debian/mosquitto-repo.gpg.key
+sudo apt-key add mosquitto-repo.gpg.key
+cd ~
+echo "deb https://repo.mosquitto.org/debian buster main" | sudo tee /etc/apt/sources.list.d/mosquitto-buster.list
+sudo apt-get $QUIET update
+sudo apt-get $QUIET -y install mosquitto
+echo "## Configure mosquitto"
+sudo cp $DHPARAM_FILE /etc/mosquitto/certs/
+sudo cp -t /etc/mosquitto/certs/ /tmp/arpi.local.key /tmp/arpi.local.cert
+sudo chown -R mosquitto: /etc/mosquitto/certs
+sudo cp /tmp/etc/mosquitto/auth.conf /etc/mosquitto/conf.d/
+sudo cp /tmp/etc/mosquitto/logging.conf /etc/mosquitto/conf.d/
+sudo mkdir -p /etc/mosquitto/configs-available/
+sudo cp /tmp/etc/mosquitto/ssl*.conf /etc/mosquitto/configs-available/
+sudo ln -s /etc/mosquitto/configs-available/ssl-self-signed.conf /etc/mosquitto/conf.d/ssl.conf
+
 # DATABASE
 printf "\n\n# Database install\n"
 echo "## Install postgres"
 sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install postgresql-${POSTGRESQL_VERSION} postgresql-server-dev-all
-echo "## Configure access"
 echo "## Create database"
 sudo su -c "createdb -E UTF8 -e $ARGUS_DB_SCHEMA" postgres
 
@@ -119,17 +147,13 @@ sudo ln -s /usr/local/nginx/conf/snippets/self-signed.conf /usr/local/nginx/conf
 sudo mkdir -p /usr/local/nginx/conf/sites-enabled/
 sudo ln -s /usr/local/nginx/conf/sites-available/argus.conf /usr/local/nginx/conf/sites-enabled/argus.conf
 
-echo "## Create self signed certificate"
-openssl req -new -newkey rsa:4096 -nodes -x509 \
-     -subj "/C=HU/ST=Fejér/L=Baracska/O=ArPI/CN=arpi.local" \
-     -keyout arpi.local.key \
-     -out arpi.local.cert
 sudo mkdir -p /usr/local/nginx/conf/ssl
-sudo mv -t /usr/local/nginx/conf/ssl/ $DHPARAM_FILE arpi.local.key arpi.local.cert
+sudo cp $DHPARAM_FILE /usr/local/nginx/conf/ssl/
+sudo cp -t /usr/local/nginx/conf/ssl/ /tmp/arpi.local.key /tmp/arpi.local.cert
 sudo chown -R www-data:www-data /usr/local/nginx/conf/ssl
 cd ~
 
-printf "\n\n# Install and configure common tools"
+printf "\n\n# Install and configure common tools\n"
 echo "## Install python3 and packages"
 sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install \
   dnsutils \
@@ -164,7 +188,7 @@ sudo cp -r /tmp/etc/systemd/* /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable argus_server argus_monitor nginx
 
-# generate secrets
+printf "\n\n# Generate secrets\n"
 if [ -z "$ARGUS_DB_PASSWORD" ]; then
   ARGUS_DB_PASSWORD="$(tr -dc 'A-Za-z0-9!#*+' </dev/urandom | head -c 24  ; echo)"
 fi
@@ -174,12 +198,21 @@ fi
 if [ -z "$SECRET" ]; then
   SECRET="$(tr -dc 'A-Za-z0-9!#$&()*+-.:;<=>?@{}' </dev/urandom | head -c 24  ; echo)"
 fi
+if [ -z "$ARGUS_MQTT_PASSWORD" ]; then
+  ARGUS_MQTT_PASSWORD="$(tr -dc 'A-Za-z0-9!#*+' </dev/urandom | head -c 24  ; echo)"
+fi
+
+echo "## Configure MQTT access"
+sudo mosquitto_passwd -b -c /etc/mosquitto/.passwd argus $ARGUS_MQTT_PASSWORD
+echo "## Configure Database access"
 sudo su -c "psql -c \"CREATE USER $ARGUS_DB_USERNAME WITH PASSWORD '$ARGUS_DB_PASSWORD';\"" postgres
+
 sudo mkdir /home/argus/server
 sudo tee /home/argus/server/secrets.env > /dev/null <<EOL
 SALT="$SALT"
 DB_PASSWORD="$ARGUS_DB_PASSWORD"
 SECRET="$SECRET"
+ARGUS_MQTT_PASSWORD="$ARGUS_MQTT_PASSWORD"
 EOL
 sudo chown -R argus:argus /home/argus/server
 
