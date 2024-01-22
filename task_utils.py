@@ -1,12 +1,14 @@
 """
 Utility functions for the python invoke tasks.
 """
+
+import contextlib
 # pylint: disable=not-context-manager
 # pylint: disable=too-many-function-args
 
 import fileinput
 
-from sh import git, pushd
+from sh import git, pushd, ErrorReturnCode
 
 
 def print_output(line):
@@ -56,5 +58,9 @@ def tag_repository(version, path):
     """
     print(f"Tagging repository with version {version}")
     with pushd(path):
-        git("tag", version, "--message", f"Release {version}")
+        with contextlib.suppress(ErrorReturnCode):
+            git("commit", "src/server/version.py" "--message", "Release {version}")
+        with contextlib.suppress(ErrorReturnCode):
+            git("commit", "src/app/version.ts" "--message", "Release {version}")
 
+        git("tag", version, "--message", f"Release {version}")
