@@ -2,10 +2,10 @@
 Utility functions for the python invoke tasks.
 """
 
-import contextlib
 # pylint: disable=not-context-manager
 # pylint: disable=too-many-function-args
 
+import contextlib
 import fileinput
 
 from sh import git, pushd, ErrorReturnCode
@@ -58,9 +58,37 @@ def tag_repository(version, path):
     """
     print(f"Tagging repository with version {version}")
     with pushd(path):
-        with contextlib.suppress(ErrorReturnCode):
-            git("commit", "src/server/version.py" "--message", "Release {version}")
-        with contextlib.suppress(ErrorReturnCode):
-            git("commit", "src/app/version.ts" "--message", "Release {version}")
+        if path == "server":
+            with contextlib.suppress(ErrorReturnCode):
+                git(
+                    "commit", "src/server/version.py", "--message", f"Release {version}"
+                )
+        if path == "webapplication":
+            with contextlib.suppress(ErrorReturnCode):
+                git("commit", "src/app/version.ts", "--message", f"Release {version}")
 
         git("tag", version, "--message", f"Release {version}")
+
+
+def get_uncommitted_changes(path):
+    """
+    Returns the uncommitted changes of the repository.
+    """
+    with pushd(path):
+        lines = git("status", "--short").splitlines()
+        # lines exclude version files
+        lines = [line for line in lines if "version." not in line]
+        return lines
+
+
+def check_uncommitted_changes(path):
+    """
+    Returns True if the repository has uncommitted changes.
+    """
+    print(f"Checking for uncommitted changes in '{path}'...")
+    changes = get_uncommitted_changes(path)
+    if len(changes) > 0:
+        print("\n".join(changes))
+    else:
+        print("No uncommitted changes found.")
+    return len(changes) > 0

@@ -1,13 +1,17 @@
 # pylint: disable=no-member
+# pylint: disable=too-many-function-args
+# pylint: disable=no-name-in-module
+# pylint: disable=unexpected-keyword-arg
 """
 Tasks form managing the ArPI Home Security system software components.
 """
 
 from enum import Enum
-import sh
+
+from sh import ng
 from invoke import task
 
-from task_utils import tag_repository, update_version_files
+from task_utils import check_uncommitted_changes, tag_repository, update_version_files
 
 
 class Component(Enum):
@@ -34,28 +38,47 @@ def build_webapplication(c):
     """
     print("Building production webapplication...")
     print(
-        sh.ng(
+        ng(
             "build", "--configuration=production", "--localize", _cwd="webapplication"
         )
     )
 
 
-@task(help={
-    "version": "Version of the ArPI Home Security system to release.",
-    "component": f"(optional) Component of the ArPI Home Security system to release {[c.value for c in Component]}."
-})
-def release(c, version, component: Component = None):
+@task(
+    help={
+        "version": "Version of the ArPI Home Security system to release.",
+        "component": f"(optional) Component of the ArPI Home Security system to release {[c.value for c in Component]}.",
+    }
+)
+def release(c, version, component: Component = None, dry_run=False):
     """
     Release the ArPI Home Security system software components.
     """
+
     update_version_files(version)
 
     if component == Component.SERVER.value:
-        tag_repository(version=version, path="server")
+        if check_uncommitted_changes("server"):
+            print("Please commit your changes first!")
+            exit(1)
+        if not dry_run:
+            tag_repository(version=version, path="server")
     elif component == Component.WEBAPPLICATION.value:
+        if check_uncommitted_changes("webapplication"):
+            print("Please commit your changes first!")
+            exit(1)
         build_webapplication(c)
-        tag_repository(version=version, path="webapplication")
+        if not dry_run:
+            tag_repository(version=version, path="webapplication")
     else:
+        if check_uncommitted_changes("server"):
+            print("Please commit your changes first!")
+            exit(1)
+        if check_uncommitted_changes("webapplication"):
+            print("Please commit your changes first!")
+            exit(1)
+
         build_webapplication(c)
-        tag_repository(version=version, path="server")
-        tag_repository(version=version, path="webapplication")
+        if not dry_run:
+            tag_repository(version=version, path="server")
+            tag_repository(version=version, path="webapplication")
