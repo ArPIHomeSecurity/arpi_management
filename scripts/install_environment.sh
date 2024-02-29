@@ -39,6 +39,7 @@ printf "\n\n## Create self signed certificate\n"
 cd /tmp
 openssl req -new -newkey rsa:4096 -nodes -x509 \
      -subj "/C=HU/ST=Fejér/L=Baracska/O=ArPI/CN=arpi.local" \
+     -days 730 \
      -keyout arpi.local.key \
      -out arpi.local.cert
 cd ~
