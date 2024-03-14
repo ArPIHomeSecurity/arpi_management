@@ -23,9 +23,9 @@ def get_repository_version(path):
     Returns the current version of the repository.
     """
     with pushd(path):
-        branch = git("rev-parse", "--abbrev-ref", "HEAD").strip()
+        # branch = git("rev-parse", "--abbrev-ref", "HEAD").strip()
         commit = git("rev-parse", "HEAD").strip()[:7]
-        return f"{branch}-{commit}"
+        return commit
 
 
 def replace(filename, placeholder, value):
@@ -72,7 +72,7 @@ def tag_repository(version, path):
 
 def get_uncommitted_changes(path):
     """
-    Returns the uncommitted changes of the repository.
+    Returns the uncommitted changes of the repository excluding the version files.
     """
     with pushd(path):
         lines = git("status", "--short").splitlines()
