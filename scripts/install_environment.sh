@@ -170,6 +170,22 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install \
   gir1.2-gtk-3.0 \
   fail2ban
 
+# Firewalld
+printf "\n\n# Install Firewalld\n"
+sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install firewalld
+sudo systemctl enable firewalld
+# webapplication
+sudo firewall-cmd --zone=public --permanent --add-port=80/tcp
+sudo firewall-cmd --zone=public --permanent --add-port=443/tcp
+# mqtt
+sudo firewall-cmd --zone=public --permanent --add-port=8883/tcp
+# avahi
+sudo firewall-cmd --zone=public --add-port=5353/udp --permanent
+# avoid high memory usage
+# https://github.com/firewalld/firewalld/issues/738#issuecomment-865168495
+sudo sed -i 's/FirewallBackend=nftables/FirewallBackend=iptables/' /etc/firewalld/firewalld.conf
+
+
 echo "## Install wiringpi for pywiegand"
 git clone $QUIET https://github.com/WiringPi/WiringPi.git ~/wiringpi
 cd ~/wiringpi
