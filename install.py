@@ -212,7 +212,7 @@ def install_environment(default_access, arpi_access, database, deployment, progr
         )
 
     # restart the host to activate the user
-    execute_remote(message="Restarting the host", ssh=ssh, command="sudo reboot")
+    execute_remote(message="Restarting the host", ssh=ssh, password=arpi_access["password"], command="sudo reboot")
 
     retry = 0
     ssh.close()
@@ -222,7 +222,7 @@ def install_environment(default_access, arpi_access, database, deployment, progr
         try:
             ssh = get_arpi_connection(arpi_access)
         except SSHConnectionError:
-            if retry > 10:
+            if retry > 20:
                 logger.warning("Failed to connect to SSH server")
                 retry += 1
                 break
