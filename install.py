@@ -108,9 +108,16 @@ def get_arpi_connection(access):
 
         private_key = None
         if exists(access.get("key_name", "")):
-            private_key = paramiko.RSAKey.from_private_key_file(
-                access.get("key_name", ""), access["password"]
-            )
+            try:
+                private_key = paramiko.RSAKey.from_private_key_file(
+                    access.get("key_name", ""), access["password"]
+                )
+                logger.info("RSA key loaded")
+            except SSHException:
+                private_key = paramiko.Ed25519Key.from_private_key_file(
+                    access.get("key_name", ""), access["password"]
+                )
+                logger.info("Ed25519 key loaded")
 
         ssh = paramiko.SSHClient()
         ssh.load_system_host_keys()
