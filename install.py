@@ -2,7 +2,8 @@
 # encoding: utf-8
 """
 
-Script for installing the components of the ArPI home security system to a running Raspberry PI Zero Wifi host.
+Script for installing the components of the ArPI home security system to a running 
+Raspberry PI Zero Wifi host.
 
 It uses the configuration file install/[_<environment>].yaml!
 
@@ -20,7 +21,7 @@ import logging
 import subprocess
 import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from os import system
+from os import path, system
 from os.path import basename, exists, join
 from socket import gaierror
 from time import sleep
@@ -224,6 +225,11 @@ def install_environment(default_access, arpi_access, database, deployment, progr
     retry = 0
     ssh.close()
     ssh = None
+
+    # remove the known_hosts entry to avoid conflict with the previous installation
+    known_hosts_file = path.expanduser("~/.ssh/known_hosts")
+    subprocess.call(["ssh-keygen", "-f", known_hosts_file, "-R", arpi_access["hostname"]])
+
     while not ssh:
         sleep(5)
         try:
