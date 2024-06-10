@@ -166,6 +166,8 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install \
 	python3-dev \
 	python3-gpiozero \
 	python3-gi \
+  python3-setuptools \
+  cmake \
   gcc \
   libgirepository1.0-dev \
   libcairo2-dev \
