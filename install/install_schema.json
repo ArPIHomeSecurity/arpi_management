@@ -38,7 +38,7 @@
           "content": {
             "type": "string"
           },
-          "schema": {
+          "name": {
             "type": "string"
           },
           "username": {
@@ -47,26 +47,7 @@
         },
         "required": [
           "content",
-          "schema",
-          "username"
-        ]
-      },
-      "default_access": {
-        "type": "object",
-        "properties": {
-          "hostname": {
-            "type": "string"
-          },
-          "password": {
-            "type": "string"
-          },
-          "username": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "hostname",
-          "password",
+          "name",
           "username"
         ]
       },
@@ -113,7 +94,6 @@
     "required": [
       "arpi_access",
       "database",
-      "default_access",
       "deployment"
     ]
   }
