@@ -16,23 +16,12 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET update
 sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y upgrade
 sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y autoremove
 
-printf "\n\n# User argus\n"
-# Setup user with password
-if ! id -u argus; then
-  echo "## Creating user"
-  sudo useradd -G sudo -m argus
-  echo "argus:$ARPI_PASSWORD" | sudo chpasswd
-
-  echo "## Install oh my zsh for argus"
-  sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install zsh curl git vim minicom net-tools telnet
-  set +x
-  sudo su -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh) --unattended 2>&1 | cat" argus
-  set -x
-  sudo chsh -s /bin/zsh argus
-
-  # move the version manamgement script to the argus user
-  sudo mv ~/manage_versions.py /home/argus
-fi
+echo "## Install oh my zsh for argus"
+sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install zsh curl git vim minicom net-tools telnet
+set +x
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh) --unattended 2>&1 | cat"
+set -x
+sudo chsh -s /bin/zsh argus
 
 # CERTIFICATE
 printf "\n\n## Create self signed certificate\n"
@@ -51,7 +40,7 @@ cd /tmp
 wget http://repo.mosquitto.org/debian/mosquitto-repo.gpg.key
 sudo apt-key add mosquitto-repo.gpg.key
 cd ~
-echo "deb https://repo.mosquitto.org/debian buster main" | sudo tee /etc/apt/sources.list.d/mosquitto-buster.list
+echo "deb https://repo.mosquitto.org/debian bookworm main" | sudo tee /etc/apt/sources.list.d/mosquitto.list
 sudo apt-get $QUIET update
 sudo apt-get $QUIET -y install mosquitto
 echo "## Configure mosquitto"
@@ -69,7 +58,7 @@ printf "\n\n# Database install\n"
 echo "## Install postgres"
 sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install postgresql-${POSTGRESQL_VERSION} postgresql-server-dev-all
 echo "## Create database"
-sudo su -c "createdb -E UTF8 -e $ARGUS_DB_SCHEMA" postgres
+sudo su -c "createdb -E UTF8 -e $ARGUS_DB_NAME" postgres
 
 # CERTBOT
 printf "\n\n# Install certbot\n"
@@ -141,6 +130,7 @@ echo "## Build"
 make
 echo "## Install"
 sudo make install
+rm -rf ~/nginx_build
 # NGINX configurations
 sudo mkdir -p /var/log/nginx
 sudo rm -r /usr/local/nginx/conf/*
@@ -199,11 +189,8 @@ sudo ldconfig
 cd ~
 
 echo "## Install pip packages"
-curl -OJ https://bootstrap.pypa.io/get-pip.py
-# install pip but supress the output to avoid error in ssh installer
-# "UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe2 in position 2047: unexpected end of data"
-sudo python3 get-pip.py --quiet
-sudo pip3 install --progress-bar $PROGRESS pipenv importlib-resources GitPython
+sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install python3-pip pipenv
+#pip3 install --progress-bar $PROGRESS importlib-resources GitPython
 
 echo "## Configure systemd services"
 sudo cp -r /tmp/etc/systemd/* /etc/systemd/system/
@@ -226,8 +213,12 @@ fi
 
 echo "## Configure MQTT access"
 sudo mosquitto_passwd -b -c /etc/mosquitto/.passwd argus $ARGUS_MQTT_PASSWORD
+sudo chmod +r /etc/mosquitto/.passwd
+
 echo "## Configure Database access"
-sudo su -c "psql -c \"CREATE USER $ARGUS_DB_USERNAME WITH PASSWORD '$ARGUS_DB_PASSWORD';\"" postgres
+sudo su - postgres -c "psql -c \"CREATE USER $ARGUS_DB_USERNAME WITH PASSWORD '$ARGUS_DB_PASSWORD';\""
+sudo su - postgres -c "psql -d $ARGUS_DB_NAME -c \"GRANT ALL PRIVILEGES ON DATABASE $ARGUS_DB_NAME TO $ARGUS_DB_USERNAME;\""
+sudo su - postgres -c "psql -d $ARGUS_DB_NAME -c \"GRANT ALL ON SCHEMA public TO $ARGUS_DB_USERNAME;\""
 
 sudo mkdir /home/argus/server
 sudo tee /home/argus/server/secrets.env > /dev/null <<EOL
@@ -242,6 +233,3 @@ echo "## Configure /run folder"
 # configuring the /run/argus temporary folder to create after every reboot
 echo "# Type Path                     Mode    UID     GID     Age     Argument" | sudo tee /usr/lib/tmpfiles.d/argus.conf
 echo "d /run/argus 0755 argus argus" | sudo tee /usr/lib/tmpfiles.d/argus.conf
-
-echo "## Setup hostname"
-echo $ARPI_HOSTNAME | sudo tee /etc/hostname
