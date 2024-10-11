@@ -160,11 +160,11 @@ def install_environment(arpi_access, database, deployment, progress=False):
 
     # create the env variables string because paramiko update_environment ignores them
     arguments = {
+        "ARPI_HOSTNAME": arpi_access["hostname"],
         "ARPI_PASSWORD": arpi_access["password"],
         "ARGUS_DB_NAME": database["name"],
         "ARGUS_DB_USERNAME": database["username"],
         "ARGUS_DB_PASSWORD": database.get("password", ""),
-        "ARPI_HOSTNAME": arpi_access["hostname"],
         "DHPARAM_FILE": join("/tmp", dhparam_file),
         "SALT": deployment["salt"],
         "SECRET": deployment["secret"],
