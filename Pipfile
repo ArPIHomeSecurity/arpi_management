@@ -4,21 +4,21 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-invoke = "~2.2"
-pyyaml = "~6.0"
-paramiko = "~3.5"
-scp = "~0.15"
-sh = "~2.1"
+invoke = "~=2.2"
+pyyaml = "~=6.0"
+paramiko = "~=3.5"
+scp = "~=0.15"
+sh = "~=2.1"
 
 [dev-packages]
-black = "~24.10"
-flake8 = "~7.1"
-pyinvoke = "~1.0"
-pylint = "~3.3"
-rope = "~1.13"
+black = "~=24.10"
+flake8 = "~=7.1"
+pyinvoke = "~=1.0"
+pylint = "~=3.3"
+rope = "~=1.13"
 
 [requires]
-python_version = "3"
+python_version = "3.11"
 
 [pipenv]
 allow_prereleases = true
