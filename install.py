@@ -273,13 +273,17 @@ def install_component(arpi_access, deployment, component, update=False, restart=
         )
 
     if update:
+        categories = ["packages", "device"]
+        if deployment["deploy_simulator"]:
+            categories.append("simulator")
+
         execute_remote(
             message="Install python packages to system...",
             ssh=ssh,
             password=arpi_access["password"],
             command=f"cd server; \
                     PIPENV_TIMEOUT=9999 CI=1 WORKON_HOME=/home/argus/.venvs PIPENV_CUSTOM_VENV_NAME=server \
-                    pipenv install --site-packages {'--dev' if deployment['deploy_simulator'] else ''}",
+                    pipenv install --site-packages --categories \"{' '.join(categories)}\"",
         )
 
     if restart:
