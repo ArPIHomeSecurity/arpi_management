@@ -252,3 +252,4 @@ sudo systemctl restart nginx
 
 printf "\n\n# Cleanup\n"
 sudo apt-get $QUIET clean
+sudo apt-get $QUIET autoremove
