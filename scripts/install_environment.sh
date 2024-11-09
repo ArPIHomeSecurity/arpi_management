@@ -182,8 +182,8 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install \
 
 
 echo "## Install wiringpi for pywiegand"
-git clone $QUIET https://github.com/WiringPi/WiringPi.git ~/wiringpi
-cd ~/wiringpi
+git clone $QUIET https://github.com/WiringPi/WiringPi.git /tmp/wiringpi
+cd /tmp/wiringpi
 ./build
 sudo ldconfig
 cd ~
