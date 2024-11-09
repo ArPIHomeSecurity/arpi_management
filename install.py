@@ -137,7 +137,7 @@ def get_arpi_connection(access):
     return ssh
 
 
-def install_environment(default_access, arpi_access, database, deployment, progress=False):
+def install_environment(arpi_access, database, deployment, progress=False):
     """
     Install prerequisites to an empty Raspberry PI.
     """
@@ -160,11 +160,11 @@ def install_environment(default_access, arpi_access, database, deployment, progr
 
     # create the env variables string because paramiko update_environment ignores them
     arguments = {
+        "ARPI_HOSTNAME": arpi_access["hostname"],
         "ARPI_PASSWORD": arpi_access["password"],
-        "ARGUS_DB_SCHEMA": database["schema"],
+        "ARGUS_DB_NAME": database["name"],
         "ARGUS_DB_USERNAME": database["username"],
         "ARGUS_DB_PASSWORD": database.get("password", ""),
-        "ARPI_HOSTNAME": arpi_access["hostname"],
         "DHPARAM_FILE": join("/tmp", dhparam_file),
         "SALT": deployment["salt"],
         "SECRET": deployment["secret"],
@@ -179,7 +179,11 @@ def install_environment(default_access, arpi_access, database, deployment, progr
     arguments = [f"export {key}={value}" for key, value in arguments.items()]
     arguments = "; ".join(arguments)
 
-    ssh = get_default_connection(default_access)
+    # remove the known_hosts entry to avoid conflict with the previous installation
+    known_hosts_file = path.expanduser("~/.ssh/known_hosts")
+    subprocess.call(["ssh-keygen", "-f", known_hosts_file, "-R", arpi_access["hostname"]])
+
+    ssh = get_arpi_connection(arpi_access)
     scp = SCPClient(ssh.get_transport(), progress=show_progress if progress else None)
     scp.put("scripts/install_environment.sh", remote_path=".")
     deep_copy(ssh, join("server", "etc"), "/tmp/etc", "**/*", progress)
@@ -202,56 +206,19 @@ def install_environment(default_access, arpi_access, database, deployment, progr
     print_lines(output)
 
     if arpi_access.get("key_name", "") and arpi_access['deploy_ssh_key']:
-        # waiting for user
-        # 1. deploy key can timeout
-        # 2. ssh accept password only from terminal
-        input("Waiting before deploying public key!")
-        command = f"ssh-copy-id -i {arpi_access.get('key_name', '')} {arpi_access['username']}@{default_access['hostname']}"
+        # deploy key
+        command = f"ssh-copy-id -i {arpi_access.get('key_name', '')} {arpi_access['username']}@{arpi_access['hostname']}"
         logger.info("Deploy public key: %s", command)
         while subprocess.call(command, shell=True) != 0:
             # retry after 2 seconds
             sleep(2)
 
     if arpi_access.get("key_name", "") and arpi_access['disable_ssh_password_authentication']:
+        # ssh accept password only from terminal
         execute_remote(
             message="Switching to key based ssh authentication",
             ssh=ssh,
             command="sudo sed -i -E -e 's/.*PasswordAuthentication (yes|no)/PasswordAuthentication no/g' /etc/ssh/sshd_config",
-        )
-
-    # restart the host to activate the user
-    execute_remote(message="Restarting the host", ssh=ssh, password=arpi_access["password"], command="sudo reboot")
-
-    retry = 0
-    ssh.close()
-    ssh = None
-
-    # remove the known_hosts entry to avoid conflict with the previous installation
-    known_hosts_file = path.expanduser("~/.ssh/known_hosts")
-    subprocess.call(["ssh-keygen", "-f", known_hosts_file, "-R", arpi_access["hostname"]])
-
-    while not ssh:
-        sleep(5)
-        try:
-            ssh = get_arpi_connection(arpi_access)
-        except SSHConnectionError:
-            if retry > 20:
-                logger.warning("Failed to connect to SSH server")
-                retry += 1
-                break
-
-    if ssh:
-        execute_remote(
-            message="Delete default user...",
-            ssh=ssh,
-            password=arpi_access["password"],
-            command=f"sudo deluser {default_access['username']}"
-        )
-        execute_remote(
-            message="Delete default user home folder...",
-            ssh=ssh,
-            password=arpi_access["password"],
-            command=f"sudo rm -rf /home/{default_access['username']}"
         )
 
     logger.info("Finished installing environment")
@@ -306,11 +273,17 @@ def install_component(arpi_access, deployment, component, update=False, restart=
         )
 
     if update:
+        categories = ["packages", "device"]
+        if deployment["deploy_simulator"]:
+            categories.append("simulator")
+
         execute_remote(
             message="Install python packages to system...",
             ssh=ssh,
             password=arpi_access["password"],
-            command=f"cd server; sudo PIPENV_TIMEOUT=9999 CI=1 pipenv install {'--dev' if deployment['deploy_simulator'] else ''} --system",
+            command=f"cd server; \
+                    PIPENV_TIMEOUT=9999 CI=1 WORKON_HOME=/home/argus/.venvs PIPENV_CUSTOM_VENV_NAME=server \
+                    pipenv install --site-packages --categories \"{' '.join(categories)}\"",
         )
 
     if restart:
@@ -356,7 +329,8 @@ def install_database(arpi_access, database, update=False, progress=False):
     execute_remote(
         message="Upgrade database...",
         ssh=ssh,
-        command="""cd server; \
+        command="""cd server; \ 
+            source /home/argus/.venvs/server/bin/activate; \
             export $(grep -hv '^#' .env secrets.env | sed 's/\"//g' | xargs -d '\\n'); \
             printenv; \
             flask --app server:app db upgrade
@@ -367,7 +341,9 @@ def install_database(arpi_access, database, update=False, progress=False):
         execute_remote(
             message="Updating database content...",
             ssh=ssh,
-            command=f"cd server; src/data.py -d -c {database['content']}",
+            command=f"cd server;\
+                    source /home/argus/.venvs/server/bin/activate; \
+                    src/data.py -d -c {database['content']}",
         )
 
     ssh.close()
@@ -468,7 +444,7 @@ def main(argv=None):  # IGNORE:C0111
             input("Waiting before starting the installation to verify the configuration!")
 
         if args.component == "environment":
-            install_environment(config["default_access"], config["arpi_access"], config["database"], config["deployment"], args.progress)
+            install_environment(config["arpi_access"], config["database"], config["deployment"], args.progress)
         elif args.component == "server":
             install_server(config["arpi_access"], config["deployment"], args.update, args.restart, args.progress)
         elif args.component == "monitor":

@@ -16,23 +16,12 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET update
 sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y upgrade
 sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y autoremove
 
-printf "\n\n# User argus\n"
-# Setup user with password
-if ! id -u argus; then
-  echo "## Creating user"
-  sudo useradd -G sudo -m argus
-  echo "argus:$ARPI_PASSWORD" | sudo chpasswd
-
-  echo "## Install oh my zsh for argus"
-  sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install zsh curl git vim minicom net-tools telnet
-  set +x
-  sudo su -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh) --unattended 2>&1 | cat" argus
-  set -x
-  sudo chsh -s /bin/zsh argus
-
-  # move the version manamgement script to the argus user
-  sudo mv ~/manage_versions.py /home/argus
-fi
+echo "## Install oh my zsh for argus"
+sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install zsh curl git vim minicom net-tools telnet
+set +x
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh) --unattended 2>&1 | cat"
+set -x
+sudo chsh -s /bin/zsh argus
 
 # CERTIFICATE
 printf "\n\n## Create self signed certificate\n"
@@ -51,7 +40,7 @@ cd /tmp
 wget http://repo.mosquitto.org/debian/mosquitto-repo.gpg.key
 sudo apt-key add mosquitto-repo.gpg.key
 cd ~
-echo "deb https://repo.mosquitto.org/debian buster main" | sudo tee /etc/apt/sources.list.d/mosquitto-buster.list
+echo "deb https://repo.mosquitto.org/debian bookworm main" | sudo tee /etc/apt/sources.list.d/mosquitto.list
 sudo apt-get $QUIET update
 sudo apt-get $QUIET -y install mosquitto
 echo "## Configure mosquitto"
@@ -67,9 +56,9 @@ sudo ln -s /etc/mosquitto/configs-available/ssl-self-signed.conf /etc/mosquitto/
 # DATABASE
 printf "\n\n# Database install\n"
 echo "## Install postgres"
-sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install postgresql-${POSTGRESQL_VERSION} postgresql-server-dev-all
+sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install postgresql-${POSTGRESQL_VERSION} libpq-dev
 echo "## Create database"
-sudo su -c "createdb -E UTF8 -e $ARGUS_DB_SCHEMA" postgres
+sudo su -c "createdb -E UTF8 -e $ARGUS_DB_NAME" postgres
 
 # CERTBOT
 printf "\n\n# Install certbot\n"
@@ -96,9 +85,8 @@ fi
 # based on https://www.abelectronics.co.uk/kb/article/30/rtc-pi-on-raspbian-buster-and-stretch
 printf "\n\n# Install RTC - DS1307\n"
 sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install i2c-tools
-sudo i2cdetect -y 1
 sudo bash -c "echo ds1307 0x68 > /sys/class/i2c-adapter/i2c-1/new_device"
-echo "dtoverlay=i2c-rtc,ds1307" | sudo tee -a /boot/config.txt
+echo "dtoverlay=i2c-rtc,ds1307" | sudo tee -a /boot/firmware/config.txt
 echo "rtc-ds1307" | sudo tee -a /etc/modules
 sudo cp /tmp/etc/cron/hwclock /etc/cron.d/
 sudo chmod 644 /etc/cron.d/hwclock
@@ -111,12 +99,12 @@ sudo systemctl disable serial-getty@ttyAMA0.service
 sudo systemctl stop serial-getty@ttyS0.service
 sudo systemctl disable serial-getty@ttyS0.service
 sudo sed -i 's/console=serial0,115200 //g' /boot/cmdline.txt
-echo "" | sudo tee -a /boot/config.txt
-echo "# Enable UART" | sudo tee -a /boot/config.txt
-echo "enable_uart=1" | sudo tee -a /boot/config.txt
-echo "dtoverlay=uart0" | sudo tee -a /boot/config.txt
-echo "dtoverlay=pi3-disable-bt" | sudo tee -a /boot/config.txt
-echo "dtoverlay=pi3-miniuart-bt" | sudo tee -a /boot/config.txt
+echo "" | sudo tee -a /boot/firmware/config.txt
+echo "# Enable UART" | sudo tee -a /boot/firmware/config.txt
+echo "enable_uart=1" | sudo tee -a /boot/firmware/config.txt
+echo "dtoverlay=uart0" | sudo tee -a /boot/firmware/config.txt
+echo "dtoverlay=pi3-disable-bt" | sudo tee -a /boot/firmware/config.txt
+echo "dtoverlay=pi3-miniuart-bt" | sudo tee -a /boot/firmware/config.txt
 
 # Enable serial port
 sudo systemctl stop hciuart
@@ -125,8 +113,8 @@ sudo systemctl disable hciuart
 # NGINX installation
 printf "\n\n# Install NGINX\n"
 echo "## Download"
-mkdir ~/nginx_build
-cd ~/nginx_build
+mkdir /tmp/nginx_build
+cd /tmp/nginx_build
 curl -s -O -J http://nginx.org/download/nginx-$NGINX_VERSION.tar.gz
 tar xvf nginx-$NGINX_VERSION.tar.gz
 cd nginx-$NGINX_VERSION
@@ -141,8 +129,10 @@ echo "## Build"
 make
 echo "## Install"
 sudo make install
+rm -rf /tmp/nginx_build
 # NGINX configurations
-sudo mkdir -p /var/log/nginx
+# add user www-data to argus group for accessing the /home/argus/webapplication folder
+sudo adduser www-data argus
 sudo rm -r /usr/local/nginx/conf/*
 sudo cp -r /tmp/etc/nginx/* /usr/local/nginx/conf/
 sudo mkdir -p /usr/local/nginx/conf/modules-enabled/
@@ -192,18 +182,16 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install \
 
 
 echo "## Install wiringpi for pywiegand"
-git clone $QUIET https://github.com/WiringPi/WiringPi.git ~/wiringpi
-cd ~/wiringpi
+git clone $QUIET https://github.com/WiringPi/WiringPi.git /tmp/wiringpi
+cd /tmp/wiringpi
 ./build
 sudo ldconfig
 cd ~
 
 echo "## Install pip packages"
-curl -OJ https://bootstrap.pypa.io/get-pip.py
-# install pip but supress the output to avoid error in ssh installer
-# "UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe2 in position 2047: unexpected end of data"
-sudo python3 get-pip.py --quiet
-sudo pip3 install --progress-bar $PROGRESS pipenv importlib-resources GitPython
+sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y install python3-pip pipenv
+# remove pip configuration to avoid hash mismatch
+sudo rm /etc/pip.conf
 
 echo "## Configure systemd services"
 sudo cp -r /tmp/etc/systemd/* /etc/systemd/system/
@@ -226,22 +214,42 @@ fi
 
 echo "## Configure MQTT access"
 sudo mosquitto_passwd -b -c /etc/mosquitto/.passwd argus $ARGUS_MQTT_PASSWORD
-echo "## Configure Database access"
-sudo su -c "psql -c \"CREATE USER $ARGUS_DB_USERNAME WITH PASSWORD '$ARGUS_DB_PASSWORD';\"" postgres
+sudo chmod +r /etc/mosquitto/.passwd
 
-sudo mkdir /home/argus/server
-sudo tee /home/argus/server/secrets.env > /dev/null <<EOL
+echo "## Configure Database access"
+sudo su - postgres -c "psql -c \"CREATE USER $ARGUS_DB_USERNAME WITH PASSWORD '$ARGUS_DB_PASSWORD';\""
+sudo su - postgres -c "psql -d $ARGUS_DB_NAME -c \"GRANT ALL PRIVILEGES ON DATABASE $ARGUS_DB_NAME TO $ARGUS_DB_USERNAME;\""
+sudo su - postgres -c "psql -d $ARGUS_DB_NAME -c \"GRANT ALL ON SCHEMA public TO $ARGUS_DB_USERNAME;\""
+
+# prepare the folder for the backend service
+mkdir /home/argus/server
+tee /home/argus/server/secrets.env > /dev/null <<EOL
 SALT="$SALT"
 DB_PASSWORD="$ARGUS_DB_PASSWORD"
 SECRET="$SECRET"
 ARGUS_MQTT_PASSWORD="$ARGUS_MQTT_PASSWORD"
 EOL
-sudo chown -R argus:argus /home/argus/server
+
+# prepare the folder for the frontend service
+mkdir /home/argus/webapplication
+
+# add access for the group to the home folder
+sudo chown -R argus:argus /home/argus
+sudo chmod g+rx /home/argus /home/argus/webapplication
 
 echo "## Configure /run folder"
+sudo mkdir -p /run/argus
+sudo chown argus:argus /run/argus
+sudo chmod 755 /run/argus
 # configuring the /run/argus temporary folder to create after every reboot
 echo "# Type Path                     Mode    UID     GID     Age     Argument" | sudo tee /usr/lib/tmpfiles.d/argus.conf
 echo "d /run/argus 0755 argus argus" | sudo tee /usr/lib/tmpfiles.d/argus.conf
 
-echo "## Setup hostname"
-echo $ARPI_HOSTNAME | sudo tee /etc/hostname
+printf "\n\n# Restart services\n"
+# pick up all the changes without reboot
+sudo systemctl restart mosquitto
+sudo systemctl restart nginx
+
+printf "\n\n# Cleanup\n"
+sudo apt-get $QUIET clean
+sudo apt-get $QUIET autoremove
