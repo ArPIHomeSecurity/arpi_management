@@ -10,7 +10,7 @@ env -0 | sort -z | tr '\0' '\n'
 
 export DEBIAN_FRONTEND=noninteractive
 
-# Sytem update
+# System update
 printf "\n\n# Updating the system\n"
 sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET update
 sudo DEBIAN_FRONTEND=noninteractive apt-get $QUIET -y upgrade
@@ -22,16 +22,7 @@ set +x
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh) --unattended 2>&1 | cat"
 set -x
 sudo chsh -s /bin/zsh argus
-
-# CERTIFICATE
-printf "\n\n## Create self signed certificate\n"
-cd /tmp
-openssl req -new -newkey rsa:4096 -nodes -x509 \
-     -subj "/C=HU/ST=Fejér/L=Baracska/O=ArPI/CN=arpi.local" \
-     -days 730 \
-     -keyout arpi.local.key \
-     -out arpi.local.cert
-cd ~
+echo "source ~/.venvs/server/bin/activate" | tee -a ~/.zshrc
 
 # MQTT
 printf "\n\n# Install MQTT broker\n"
@@ -45,8 +36,9 @@ sudo apt-get $QUIET update
 sudo apt-get $QUIET -y install mosquitto
 echo "## Configure mosquitto"
 sudo cp $DHPARAM_FILE /etc/mosquitto/certs/
-sudo cp -t /etc/mosquitto/certs/ /tmp/arpi.local.key /tmp/arpi.local.cert
+sudo cp -t /etc/mosquitto/certs/ /tmp/etc/nginx/ssl/arpi_app.crt /tmp/etc/nginx/ssl/arpi_app.key /tmp/etc/nginx/ssl/arpi_ca.crt
 sudo chown -R mosquitto: /etc/mosquitto/certs
+
 sudo cp /tmp/etc/mosquitto/auth.conf /etc/mosquitto/conf.d/
 sudo cp /tmp/etc/mosquitto/logging.conf /etc/mosquitto/conf.d/
 sudo mkdir -p /etc/mosquitto/configs-available/
@@ -103,8 +95,8 @@ echo "" | sudo tee -a /boot/firmware/config.txt
 echo "# Enable UART" | sudo tee -a /boot/firmware/config.txt
 echo "enable_uart=1" | sudo tee -a /boot/firmware/config.txt
 echo "dtoverlay=uart0" | sudo tee -a /boot/firmware/config.txt
-echo "dtoverlay=pi3-disable-bt" | sudo tee -a /boot/firmware/config.txt
-echo "dtoverlay=pi3-miniuart-bt" | sudo tee -a /boot/firmware/config.txt
+echo "dtoverlay=disable-bt" | sudo tee -a /boot/firmware/config.txt
+echo "dtoverlay=miniuart-bt" | sudo tee -a /boot/firmware/config.txt
 
 # Enable serial port
 sudo systemctl stop hciuart
@@ -139,11 +131,9 @@ sudo mkdir -p /usr/local/nginx/conf/modules-enabled/
 sudo ln -s /usr/local/nginx/conf/modules-available/* /usr/local/nginx/conf/modules-enabled/
 sudo ln -s /usr/local/nginx/conf/snippets/self-signed.conf /usr/local/nginx/conf/snippets/certificates.conf
 sudo mkdir -p /usr/local/nginx/conf/sites-enabled/
-sudo ln -s /usr/local/nginx/conf/sites-available/argus.conf /usr/local/nginx/conf/sites-enabled/argus.conf
-
-sudo mkdir -p /usr/local/nginx/conf/ssl
+sudo ln -s /usr/local/nginx/conf/sites-available/http.conf /usr/local/nginx/conf/sites-enabled/http.conf
+sudo ln -s /usr/local/nginx/conf/sites-available/local.conf /usr/local/nginx/conf/sites-enabled/local.conf
 sudo cp $DHPARAM_FILE /usr/local/nginx/conf/ssl/
-sudo cp -t /usr/local/nginx/conf/ssl/ /tmp/arpi.local.key /tmp/arpi.local.cert
 sudo chown -R www-data:www-data /usr/local/nginx/conf/ssl
 cd ~
 
