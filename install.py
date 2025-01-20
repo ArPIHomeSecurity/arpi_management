@@ -247,12 +247,15 @@ def install_component(arpi_access, deployment, component, update=False, restart=
             (join("server", "src", "constants.py"), join("server", "src", "constants.py")),
             (join("server", "src", "hash.py"), join("server", "src", "hash.py")),
             (join("server", "src", "models.py"), join("server", "src", "models.py")),
-            (join("server", "src", "new_registration_code.py"), join("server", "src", "new_registration_code.py")),
+            (join("server", "src", "update_user.py"), join("server", "src", "update_user.py")),
             (join("server", "src", "tester.py"), join("server", "src", "tester.py")),
         ), progress
     )
     deep_copy(
         ssh, join("server", "src", "tools"), join("server", "src", "tools"), "**/*.py", progress
+    )
+    deep_copy(
+        ssh, join("server", "src", "utils"), join("server", "src", "utils"), "**/*.py", progress
     )
 
     logger.info("Copy component '%s'...", component)
