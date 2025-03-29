@@ -2,7 +2,7 @@
 # encoding: utf-8
 """
 
-Script for installing the components of the ArPI home security system to a running 
+Script for installing the components of the ArPI home security system to a running
 Raspberry PI Zero Wifi host.
 
 It uses the configuration file install/[_<environment>].yaml!
@@ -29,16 +29,9 @@ from time import sleep
 import paramiko
 import yaml
 from paramiko.ssh_exception import SSHException
-from scp import SCPClient
 
-from install_utils import (
-    deep_copy,
-    execute_remote,
-    generate_SSH_key,
-    list_copy,
-    print_lines,
-    show_progress
-)
+from helpers.install_utils import execute_remote, generate_ssh_key, print_lines
+from helpers.syncer import SshFileSyncer
 
 
 class SSHConnectionError(Exception):
@@ -71,13 +64,15 @@ def get_default_connection(access):
     """
     try:
         ssh = paramiko.SSHClient()
-        logger.info("Connecting %s@%s with %s", access["username"], access["hostname"], access["password"])
+        logger.info(
+            "Connecting %s@%s with %s", access["username"], access["hostname"], access["password"]
+        )
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(
             hostname=access["hostname"],
             port=access.get("port", 22),
             username=access["username"],
-            password=access["password"]
+            password=access["password"],
         )
         logger.info("Connected")
     except (SSHException, gaierror) as error:
@@ -97,14 +92,14 @@ def get_arpi_connection(access):
                 access.get("key_name", "-"),
                 access["username"],
                 access["hostname"],
-                access.get("port", 22)
+                access.get("port", 22),
             )
         elif access.get("key_name", "") == "":
             logger.info(
                 "Connecting with password %s@%s:%s",
                 access["username"],
                 access["hostname"],
-                access.get("port", 22)
+                access.get("port", 22),
             )
 
         private_key = None
@@ -148,7 +143,7 @@ def install_environment(arpi_access, database, deployment, progress=False):
         and not exists(arpi_access.get("key_name", ""))
         and not exists(arpi_access.get("key_name", "") + ".pub")
     ):
-        generate_SSH_key(arpi_access.get("key_name", ""), arpi_access["password"])
+        generate_ssh_key(arpi_access.get("key_name", ""), arpi_access["password"])
 
     dhparam_file = "arpi_dhparam.pem"
     if not exists(dhparam_file):
@@ -170,7 +165,7 @@ def install_environment(arpi_access, database, deployment, progress=False):
         "SECRET": deployment["secret"],
         # progress
         "QUIET": "" if progress else "-q",
-        "PROGRESS": "on" if progress else "off"
+        "PROGRESS": "on" if progress else "off",
     }
 
     # adding package versions
@@ -184,16 +179,14 @@ def install_environment(arpi_access, database, deployment, progress=False):
     subprocess.call(["ssh-keygen", "-f", known_hosts_file, "-R", arpi_access["hostname"]])
 
     ssh = get_arpi_connection(arpi_access)
-    scp = SCPClient(ssh.get_transport(), progress=show_progress if progress else None)
-    scp.put("scripts/install_environment.sh", remote_path=".")
-    deep_copy(ssh, join("server", "etc"), "/tmp/etc", "**/*", progress)
-    list_copy(
-        ssh,
-        (
+    syncer = SshFileSyncer(ssh, progress=progress)
+
+    syncer.deep_copy(join("server", "etc"), "/tmp/etc", "**/*")
+    syncer.list_copy(
+        [
             (dhparam_file, "/tmp"),
-            ("manage_versions.py", "~")
-        ),
-        progress
+            ("manage_versions.py", "~"),
+        ]
     )
 
     channel = ssh.get_transport().open_session()
@@ -205,7 +198,7 @@ def install_environment(arpi_access, database, deployment, progress=False):
     channel.exec_command(f"{arguments}; ./install_environment.sh")
     print_lines(output)
 
-    if arpi_access.get("key_name", "") and arpi_access['deploy_ssh_key']:
+    if arpi_access.get("key_name", "") and arpi_access["deploy_ssh_key"]:
         # deploy key
         command = f"ssh-copy-id -i {arpi_access.get('key_name', '')} {arpi_access['username']}@{arpi_access['hostname']}"
         logger.info("Deploy public key: %s", command)
@@ -213,7 +206,7 @@ def install_environment(arpi_access, database, deployment, progress=False):
             # retry after 2 seconds
             sleep(2)
 
-    if arpi_access.get("key_name", "") and arpi_access['disable_ssh_password_authentication']:
+    if arpi_access.get("key_name", "") and arpi_access["disable_ssh_password_authentication"]:
         # ssh accept password only from terminal
         execute_remote(
             message="Switching to key based ssh authentication",
@@ -222,13 +215,19 @@ def install_environment(arpi_access, database, deployment, progress=False):
         )
 
     logger.info("Finished installing environment")
+    logger.info("Final sync statistics: %s", syncer.get_statistics())
+    syncer.list_additional_files()
+    ssh.close()
 
 
-def install_component(arpi_access, deployment, component, update=False, restart=False, progress=False):
+def install_component(
+    arpi_access, deployment, component, update=False, restart=False, progress=False
+):
     """
     Install the monitor component to a Raspberry PI.
     """
     ssh = get_arpi_connection(arpi_access)
+    syncer = SshFileSyncer(ssh, progress=progress)  # Use the Syncer class
 
     execute_remote(
         message="Creating server directories...",
@@ -237,11 +236,10 @@ def install_component(arpi_access, deployment, component, update=False, restart=
     )
 
     logger.info("Copy common files...")
-    list_copy(
-        ssh,
-        (
-            (join("server", "Pipfile"), "server"),
-            (join("server", "Pipfile.lock"), "server"),
+    syncer.list_copy(
+        [
+            (join("server", "Pipfile"), join("server", "Pipfile")),
+            (join("server", "Pipfile.lock"), join("server", "Pipfile.lock")),
             (join("server", f"{deployment['server_environment']}.env"), "server/.env"),
             (join("server", "src", "data.py"), join("server", "src", "data.py")),
             (join("server", "src", "constants.py"), join("server", "src", "constants.py")),
@@ -249,31 +247,28 @@ def install_component(arpi_access, deployment, component, update=False, restart=
             (join("server", "src", "models.py"), join("server", "src", "models.py")),
             (join("server", "src", "update_user.py"), join("server", "src", "update_user.py")),
             (join("server", "src", "tester.py"), join("server", "src", "tester.py")),
-        ), progress
-    )
-    deep_copy(
-        ssh, join("server", "src", "tools"), join("server", "src", "tools"), "**/*.py", progress
-    )
-    deep_copy(
-        ssh, join("server", "src", "utils"), join("server", "src", "utils"), "**/*.py", progress
+        ]
     )
 
+    syncer.deep_copy(join("server", "src", "tools"), join("server", "src", "tools"), "**/*.py")
+    syncer.deep_copy(join("server", "src", "utils"), join("server", "src", "utils"), "**/*.py")
+
     logger.info("Copy component '%s'...", component)
-    deep_copy(
-        ssh,
+    syncer.deep_copy(
         join("server", "src", component),
         join("server", "src", component),
         "**/*.py",
-        progress
     )
 
     if deployment["deploy_simulator"]:
-        list_copy(
-            ssh,
-            (
+        syncer.list_copy(
+            [
                 (join("server", "src", "simulator.py"), join("server", "src", "simulator.py")),
-            ), progress
+            ]
         )
+
+    logger.info("File sync statistics: %s", syncer.get_statistics())
+    syncer.list_additional_files()
 
     if update:
         categories = ["packages", "device"]
@@ -304,14 +299,18 @@ def install_server(arpi_access, deployment, update=False, restart=False, progres
     """
     Install the server component to a Raspberry PI.
     """
-    install_component(arpi_access, deployment, "server", update=update, restart=restart, progress=progress)
+    install_component(
+        arpi_access, deployment, "server", update=update, restart=restart, progress=progress
+    )
 
 
 def install_monitor(arpi_access, deployment, update=False, restart=False, progress=False):
     """
     Install the monitor component to a Raspberry PI.
     """
-    install_component(arpi_access, deployment, "monitor", update=update, restart=restart, progress=progress)
+    install_component(
+        arpi_access, deployment, "monitor", update=update, restart=restart, progress=progress
+    )
 
 
 def install_database(arpi_access, database, update=False, progress=False):
@@ -319,25 +318,26 @@ def install_database(arpi_access, database, update=False, progress=False):
     Install the database component to a Raspberry PI.
     """
     ssh = get_arpi_connection(arpi_access)
+    syncer = SshFileSyncer(ssh, progress=progress)
 
     logger.info("Copy migrations...")
-    deep_copy(
-        ssh,
-        join("server", "migrations"),
-        join("server", "migrations"),
-        "**/*",
-        progress
+    syncer.deep_copy(
+        source=join("server", "migrations"),
+        target=join("server", "migrations"),
+        filter_expression="**/*",
     )
+
+    logger.info("Synced files statistics: %s", syncer.get_statistics())
 
     execute_remote(
         message="Upgrade database...",
         ssh=ssh,
-        command="""cd server; \ 
+        command="""cd server; \
             source /home/argus/.venvs/server/bin/activate; \
             export $(grep -hv '^#' .env secrets.env | sed 's/\"//g' | xargs -d '\\n'); \
             printenv; \
             flask --app server:app db upgrade
-        """
+        """,
     )
 
     if update:
@@ -357,6 +357,7 @@ def install_webapplication(arpi_access, deployment, restart=False, progress=Fals
     Install the web application component to a Raspberry PI.
     """
     ssh = get_arpi_connection(arpi_access)
+    syncer = SshFileSyncer(ssh, progress=progress)  # Use the Syncer class
 
     execute_remote(
         message="Delete old webapplication on remote site...",
@@ -366,7 +367,9 @@ def install_webapplication(arpi_access, deployment, restart=False, progress=Fals
 
     target = "webapplication"
     logger.info("Copy web application: %s => %s", deployment["webapplication_path"], target)
-    deep_copy(ssh, deployment["webapplication_path"], target, "**/*", progress)
+    syncer.deep_copy(deployment["webapplication_path"], target, "**/*")
+
+    logger.info("Synced files statistics: %s", syncer.get_statistics())
 
     if restart:
         execute_remote(
@@ -443,15 +446,31 @@ def main(argv=None):  # IGNORE:C0111
         config = {}
         with open(config_filename, "r", encoding="utf-8") as stream:
             config = yaml.load(stream, Loader=yaml.FullLoader)
-            logger.info("Working with configuration: \n%s", json.dumps(config, indent=4, sort_keys=True))
+            logger.info(
+                "Working with configuration: \n%s", json.dumps(config, indent=4, sort_keys=True)
+            )
             input("Waiting before starting the installation to verify the configuration!")
 
         if args.component == "environment":
-            install_environment(config["arpi_access"], config["database"], config["deployment"], args.progress)
+            install_environment(
+                config["arpi_access"], config["database"], config["deployment"], args.progress
+            )
         elif args.component == "server":
-            install_server(config["arpi_access"], config["deployment"], args.update, args.restart, args.progress)
+            install_server(
+                config["arpi_access"],
+                config["deployment"],
+                args.update,
+                args.restart,
+                args.progress,
+            )
         elif args.component == "monitor":
-            install_monitor(config["arpi_access"], config["deployment"], args.update, args.restart, args.progress)
+            install_monitor(
+                config["arpi_access"],
+                config["deployment"],
+                args.update,
+                args.restart,
+                args.progress,
+            )
         elif args.component == "webapplication":
             install_webapplication(config["arpi_access"], config["deployment"], args.restart)
         elif args.component == "database":
