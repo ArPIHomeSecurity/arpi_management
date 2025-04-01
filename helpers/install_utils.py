@@ -63,7 +63,9 @@ def generate_ssh_key(key_name, passphrase):
     public_key.close()
 
 
-def execute_remote(ssh, command, password=None, message=None, silent=False, get_output=False) -> Optional[str]:
+def execute_remote(
+    ssh, command, password=None, message=None, get_output=False, dry_run=False
+) -> Optional[str]:
     """
     Execute a command on the remote server
 
@@ -76,19 +78,19 @@ def execute_remote(ssh, command, password=None, message=None, silent=False, get_
     """
     if message:
         logger.info(message)
-
-    if not silent:
         logger.debug("Executing command: %s", command)
+
+    if dry_run:
+        return
 
     stdin, stdout, stderr = ssh.exec_command(command, get_pty=True)
 
-    if not silent:
-        logger.debug("Using password %s", password)
+    if password:
+        stdin.write(f"{password}\n")
+        stdin.flush()
 
-    stdin.write(f"{password}\n")
-    stdin.flush()
-
-    if get_output:
-        return read_lines(stdout)
-    elif not silent:
+    if not get_output:
         print_ssh_output(stdout, stderr, command)
+        return None
+
+    return read_lines(stdout)

@@ -30,10 +30,10 @@ class FileSyncType(Enum):
 
 
 SYNC_ICONS = {
-    FileSyncType.NEW: "\033[32m+\033[0m",
-    FileSyncType.UPDATE: "\033[33m~\033[0m",
-    FileSyncType.UNCHANGED: "\033[34m=\033[0m",
-    FileSyncType.ADDITIONAL: "\033[31mx\033[0m",
+    FileSyncType.NEW: "\033[42;30m + \033[0m",  # Green background, black text
+    FileSyncType.UPDATE: "\033[43;30m ~ \033[0m",  # Yellow background, black text
+    FileSyncType.UNCHANGED: "\033[44;30m = \033[0m",  # Blue background, black text
+    FileSyncType.ADDITIONAL: "\033[41;30m x \033[0m",  # Red background, black text
 }
 
 
@@ -90,24 +90,27 @@ class SshFileSyncer:
     A class to handle file synchronization operations.
     """
 
-    def __init__(self, ssh, progress=False):
+    def __init__(self, ssh, progress=False, dry_run=False):
         """
         Initialize the Syncer class.
 
         :param ssh: SSH client
         :param progress: show progress during file operations
+        :param dry_run: if True, do not copy files
         """
         self._ssh = ssh
         self._progress = progress
         self._uploaded_files = set()
         self.final_statistics = SyncStatistics()
         self._remote_files = set()
+        self._dry_run = dry_run
 
     def list_copy(self, files) -> SyncStatistics:
         """
         Copy files from local to remote server.
 
         :param files: list of files to copy (source file, target directory)
+
         :return: SyncStatistics object
         """
         sync_statistics = SyncStatistics()
@@ -128,7 +131,9 @@ class SshFileSyncer:
                 source_file,
                 target_path,
             )
-            scp.put(source_file, remote_path=target_path)
+            if not self._dry_run:
+                scp.put(source_file, remote_path=target_path)
+
             self._uploaded_files.add(target_path)
 
         # list files in target directory
@@ -147,9 +152,10 @@ class SshFileSyncer:
         :param source: source directory
         :param target: target directory
         :param filter_expression: filter expression to match files
+
         :return: SyncStatistics object
         """
-        execute_remote(self._ssh, f"mkdir -p {target}", silent=True)
+        execute_remote(self._ssh, f"mkdir -p {target}", dry_run=self._dry_run)
 
         created_directories = set()
         files_to_copy = []
@@ -160,7 +166,9 @@ class SshFileSyncer:
                 remote_path = join(target, directories)
                 if directories and remote_path not in created_directories:
                     created_directories.add(remote_path)
-                    execute_remote(self._ssh, f"mkdir -p {remote_path}", silent=True)
+                    execute_remote(
+                        self._ssh, f"mkdir -p {remote_path}", dry_run=self._dry_run
+                    )
 
                 files_to_copy.append((full_filename, join(remote_path, filename)))
 
@@ -212,7 +220,6 @@ class SshFileSyncer:
         output = execute_remote(
             self._ssh,
             f"test -f ~/{file} && echo 'File exists' || echo 'File does not exist'",
-            silent=True,
             get_output=True,
         )
         return output.strip() == "File exists"
@@ -228,7 +235,6 @@ class SshFileSyncer:
             self._ssh,
             f"find {path} -maxdepth 1 -type f -printf '%f\n'",
             get_output=True,
-            silent=True,
         )
         files = output.splitlines()
         return [join(path, file) for file in files if file]
@@ -254,23 +260,21 @@ class SshFileSyncer:
         :return: sha256 checksum
         """
         if self.check_file_exists(file):
-            output = execute_remote(self._ssh, f"sha256sum {file}", silent=True, get_output=True)
+            output = execute_remote(self._ssh, f"sha256sum {file}", get_output=True)
             return output.split()[0]
         else:
             return None
 
+    @property
     def list_additional_files(self):
         """
         List additional files on the remote server that are not in the local list.
 
         :param sync_statistics: SyncStatistics object
         """
-        additional_files = self._remote_files - set(self._uploaded_files)
-        for file in additional_files:
-            logger.info(
-                "  Additional file found on remote: %s",
-                file,
-            )
+        additional_files = list(self._remote_files - set(self._uploaded_files))
+        additional_files.sort()
+        return additional_files
 
     def get_statistics(self):
         """
