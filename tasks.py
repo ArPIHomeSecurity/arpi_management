@@ -11,7 +11,7 @@ from enum import Enum
 from sh import ng
 from invoke import task
 
-from task_utils import check_uncommitted_changes, tag_repository, update_version_files
+from helpers.task_utils import check_uncommitted_changes, tag_repository, update_version_files
 
 
 class Component(Enum):

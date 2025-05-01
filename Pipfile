@@ -12,10 +12,10 @@ sh = "~=2.1"
 
 [dev-packages]
 black = "~=24.10"
-flake8 = "~=7.1"
 pyinvoke = "~=1.0"
 pylint = "~=3.3"
 rope = "~=1.13"
+ruff = "*"
 
 [requires]
 python_version = "3.11"
