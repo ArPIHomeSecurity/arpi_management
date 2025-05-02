@@ -187,6 +187,7 @@ def install_environment(arpi_access, database, deployment, progress=False):
     syncer.deep_copy(join("server", "etc"), "/tmp/etc", "**/*")
     syncer.list_copy(
         [
+            ("scripts/install_environment.sh", "~"),
             (dhparam_file, "/tmp"),
             ("manage_versions.py", "~"),
         ]
@@ -196,6 +197,11 @@ def install_environment(arpi_access, database, deployment, progress=False):
     channel.get_pty()
     channel.set_combine_stderr(True)
     output = channel.makefile("r", -1)
+
+    logger.info("Final sync statistics: %s", syncer.get_statistics())
+    for file_path in syncer.list_additional_files:
+        logger.info("  %s", file_path)
+    logger.info("Synced files statistics: %s", syncer.get_statistics())
 
     logger.info("Starting install script...")
     channel.exec_command(f"{arguments}; ./install_environment.sh")
@@ -218,8 +224,7 @@ def install_environment(arpi_access, database, deployment, progress=False):
         )
 
     logger.info("Finished installing environment")
-    logger.info("Final sync statistics: %s", syncer.get_statistics())
-    syncer.list_additional_files()
+
     ssh.close()
 
 
@@ -486,7 +491,7 @@ def main(argv=None) -> int:
         print("Verbose output disabled")
         logger.setLevel(logging.INFO)
 
-    if args.dry_run:
+    if args.environment in ["server", "monitor", "database", "webapplication"] and args.dry_run:
         logger.info("Dry run enabled")
 
     # name of the folder is the same as the name of the script
@@ -541,7 +546,7 @@ def main(argv=None) -> int:
     else:
         logger.error("Unknown component: %s", args.component)
 
-    if args.dry_run:
+    if args.component in ["server", "monitor", "webapplication"] and args.dry_run:
         logger.info("Dry run finished")
     else:
         logger.info("Finished successfully!")
