@@ -22,7 +22,16 @@ set +x
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh) --unattended 2>&1 | cat"
 set -x
 sudo chsh -s /bin/zsh argus
-echo "source ~/.venvs/server/bin/activate" | tee -a ~/.zshrc
+
+cat <<'EOF' | tee -a ~/.zshrc
+
+# active python virtual environment and load env variables
+source ~/.venvs/server/bin/activate
+set -a
+. ~/server/.env
+. ~/server/secrets.env
+set +a
+EOF
 
 # MQTT
 printf "\n\n# Install MQTT broker\n"

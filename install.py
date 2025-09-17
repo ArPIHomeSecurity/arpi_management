@@ -384,6 +384,7 @@ def install_database(arpi_access, database, update=False, progress=False, dry_ru
             ssh=ssh,
             command=f"cd server;\
                     source /home/argus/.venvs/server/bin/activate; \
+                    export $(grep -hv '^#' .env secrets.env | sed 's/\"//g' | xargs -d '\\n'); \
                     src/data.py -d -c {database['content']}",
             dry_run=dry_run,
         )
