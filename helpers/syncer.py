@@ -30,10 +30,10 @@ class FileSyncType(Enum):
 
 
 SYNC_ICONS = {
-    FileSyncType.NEW: "\033[42;30m + \033[0m",  # Green background, black text
-    FileSyncType.UPDATE: "\033[43;30m ~ \033[0m",  # Yellow background, black text
-    FileSyncType.UNCHANGED: "\033[44;30m = \033[0m",  # Blue background, black text
-    FileSyncType.ADDITIONAL: "\033[41;30m x \033[0m",  # Red background, black text
+    FileSyncType.NEW: "➕",
+    FileSyncType.UPDATE: "🔄",
+    FileSyncType.UNCHANGED: "✅",
+    FileSyncType.ADDITIONAL: "🗑️",
 }
 
 
@@ -219,7 +219,7 @@ class SshFileSyncer:
         """
         output = execute_remote(
             self._ssh,
-            f"test -f ~/{file} && echo 'File exists' || echo 'File does not exist'",
+            f"test -f {file} && echo 'File exists' || echo 'File does not exist'",
             get_output=True,
         )
         return output.strip() == "File exists"

@@ -28,8 +28,8 @@ def print_ssh_output(output, errors, command=""):
 def print_lines(lines, indent="\t"):
     for line in iter(lambda: lines.readline(2048), ""):
         with contextlib.suppress(UnicodeDecodeError):
-            if line.strip() != "None":
-                logger.info("%s%s", indent, line.strip())
+            if line.strip() != "":
+                logger.info("%s%s", indent, line.rstrip())
 
 
 def read_lines(lines):

@@ -18,10 +18,11 @@ It uses the configuration file install/[_<environment>].yaml!
 
 import json
 import logging
+import os
 import subprocess
 import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from os import path, system
+from os import system
 from os.path import basename, exists, join
 from socket import gaierror
 from time import sleep
@@ -30,7 +31,7 @@ import paramiko
 import yaml
 from paramiko.ssh_exception import SSHException
 
-from helpers.install_utils import execute_remote, generate_ssh_key, print_lines
+from helpers.install_utils import execute_remote, generate_ssh_key
 from helpers.syncer import SshFileSyncer
 
 
@@ -39,8 +40,8 @@ class SSHConnectionError(Exception):
     Thrown when we can't connect to the remote host.
     """
 
-
-logging.basicConfig(format="%(message)s")
+# write logs to stdout for tee to a file
+logging.basicConfig(format="%(message)s", stream=sys.stdout)
 logger = logging.getLogger()
 logging.getLogger("paramiko").setLevel(logging.CRITICAL)
 
@@ -171,6 +172,15 @@ def install_environment(arpi_access, database, deployment, progress=False):
         "PROGRESS": "on" if progress else "off",
     }
 
+    # compress server folder
+    logger.info("Compressing server folder...")
+    # Remove existing compressed file if it exists
+    if exists("source.zip"):
+        logger.info("Removing existing source.zip")
+        os.unlink("source.zip")
+
+    system("cd server && zip -rq ../source.zip . -x '**/__pycache__/*' '**/*.pyc' '**/*.sock'")
+
     # adding package versions
     arguments.update({p.upper(): f"{v}" for p, v in deployment["packages"].items() if v})
 
@@ -178,41 +188,75 @@ def install_environment(arpi_access, database, deployment, progress=False):
     arguments = "; ".join(arguments)
 
     # remove the known_hosts entry to avoid conflict with the previous installation
-    known_hosts_file = path.expanduser("~/.ssh/known_hosts")
-    subprocess.call(["ssh-keygen", "-f", known_hosts_file, "-R", arpi_access["hostname"]])
+    subprocess.call(
+        ["ssh-keygen", "-R", arpi_access["hostname"]],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+    logger.info("Removed %s from known_hosts", arpi_access["hostname"])
 
     ssh = get_arpi_connection(arpi_access)
     syncer = SshFileSyncer(ssh, progress=progress)
 
-    syncer.deep_copy(join("server", "etc"), "/tmp/etc", "**/*")
     syncer.list_copy(
         [
-            ("scripts/install_environment.sh", "~"),
-            (dhparam_file, "/tmp"),
-            ("manage_versions.py", "~"),
+            ("source.zip", "/tmp/source.zip"),
+            (dhparam_file, f"/tmp/{dhparam_file}"),
+            ("install_environment.py", "~/install_environment.py"),
+            ("manage_versions.py", "~/manage_versions.py"),
         ]
     )
-
-    channel = ssh.get_transport().open_session()
-    channel.get_pty()
-    channel.set_combine_stderr(True)
-    output = channel.makefile("r", -1)
 
     logger.info("Final sync statistics: %s", syncer.get_statistics())
     for file_path in syncer.list_additional_files:
         logger.info("  %s", file_path)
     logger.info("Synced files statistics: %s", syncer.get_statistics())
 
-    logger.info("Starting install script...")
-    channel.exec_command(f"{arguments}; ./install_environment.sh")
-    print_lines(output)
+    # remove compressed file locally
+    os.unlink("source.zip")
+
+    # decompress server folder
+    execute_remote(
+        message="Decompressing server folder...",
+        ssh=ssh,
+        command="unzip -o /tmp/source.zip -d /tmp/server",
+    )
+
+    execute_remote(
+        message="Installing click...",
+        ssh=ssh,
+        command="sudo apt-get install -y python3-click",
+    )
+
+    execute_remote(
+        message="Running install script",
+        ssh=ssh,
+        command=f"{arguments}; sudo -E ./install_environment.py full-install",
+    )
 
     if arpi_access.get("key_name", "") and arpi_access["deploy_ssh_key"]:
+        # add host to known_hosts
+        subprocess.call(
+            ["ssh-keyscan", "-H", arpi_access["hostname"]],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        logger.info("Added %s to known_hosts", arpi_access["hostname"])
         # deploy key
-        command = f"ssh-copy-id -i {arpi_access.get('key_name', '')} {arpi_access['username']}@{arpi_access['hostname']}"
-        logger.info("Deploy public key: %s", command)
-        while subprocess.call(command, shell=True) != 0:
+        command = [
+            "sshpass",
+            "-p",
+            arpi_access["password"],
+            "ssh-copy-id",
+            "-i",
+            arpi_access.get("key_name", ""),
+            f"{arpi_access['username']}@{arpi_access['hostname']}",
+        ]
+        logger.info("Deploy public key: %s", " ".join(command))
+        while subprocess.call(command) != 6:
+            # 6 =        6      Host public key is unknown. sshpass exits without confirming the new key.
             # retry after 2 seconds
+            logger.info("Retrying in 2 seconds...")
             sleep(2)
 
     if arpi_access.get("key_name", "") and arpi_access["disable_ssh_password_authentication"]:
@@ -247,39 +291,28 @@ def install_component(
     logger.info("Copy common files...")
     syncer.list_copy(
         [
-            (join("server", "Pipfile"), join("server", "Pipfile")),
-            (join("server", "Pipfile.lock"), join("server", "Pipfile.lock")),
-            (join("server", f"{deployment['server_environment']}.env"), "server/.env"),
-            (join("server", "src", "data.py"), join("server", "src", "data.py")),
-            (
-                join("server", "src", "constants.py"),
-                join("server", "src", "constants.py"),
-            ),
-            (join("server", "src", "hash.py"), join("server", "src", "hash.py")),
-            (join("server", "src", "models.py"), join("server", "src", "models.py")),
-            (
-                join("server", "src", "update_user.py"),
-                join("server", "src", "update_user.py"),
-            ),
-            (join("server", "src", "tester.py"), join("server", "src", "tester.py")),
+            (join("server", "Pipfile"), "~/server/Pipfile"),
+            (join("server", "Pipfile.lock"), "~/server/Pipfile.lock"),
+            (join("server", f"{deployment['server_environment']}.env"), "~/server/.env"),
+            (join("server", "src", "data.py"), "~/server/src/data.py"),
+            (join("server", "src", "constants.py"), "~/server/src/constants.py"),
+            (join("server", "src", "hash.py"), "~/server/src/hash.py"),
+            (join("server", "src", "models.py"), "~/server/src/models.py"),
+            (join("server", "src", "update_user.py"), "~/server/src/update_user.py"),
+            (join("server", "src", "tester.py"), "~/server/src/tester.py"),
         ]
     )
 
-    syncer.deep_copy(join("server", "src", "tools"), join("server", "src", "tools"), "**/*.py")
-    syncer.deep_copy(join("server", "src", "utils"), join("server", "src", "utils"), "**/*.py")
+    syncer.deep_copy(join("server", "src", "tools"), "~/server/src/tools", "**/*.py")
+    syncer.deep_copy(join("server", "src", "utils"), "~/server/src/utils", "**/*.py")
 
     logger.info("Copy component '%s'...", component)
-    syncer.deep_copy(join("server", "src", component), join("server", "src", component), "**/*.py")
+    syncer.deep_copy(join("server", "src", component), f"~/server/src/{component}", "**/*.py")
 
     if deployment["deploy_simulator"]:
-        syncer.list_copy(
-            [
-                (
-                    join("server", "src", "simulator.py"),
-                    join("server", "src", "simulator.py"),
-                ),
-            ]
-        )
+        syncer.list_copy([
+            (join("server", "src", "simulator.py"), "~/server/src/simulator.py"),
+        ])
 
     logger.info("List of additional files:")
     for file_path in syncer.list_additional_files:
@@ -287,7 +320,8 @@ def install_component(
     logger.info("Synced files statistics: %s", syncer.get_statistics())
 
     if update:
-        categories = ["packages", "device"]
+        #categories = ["packages", "device"]
+        categories = ["packages"]
         if deployment["deploy_simulator"]:
             categories.append("simulator")
 
