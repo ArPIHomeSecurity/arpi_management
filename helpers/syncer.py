@@ -138,8 +138,11 @@ class SshFileSyncer:
 
         # list files in target directory
         for _, target_path in files:
+            is_absolute_path = target_path.startswith("/")
             target_directory = target_path.split("/")[:-1]
-            if target_directory:
+            if is_absolute_path:
+                self._remote_files.update(self.list_remote_files(join("/", *target_directory)))
+            else:
                 self._remote_files.update(self.list_remote_files(join(*target_directory)))
 
         self.final_statistics.add(sync_statistics)

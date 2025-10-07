@@ -1,101 +1,84 @@
 {
-    "$schema": "http://json-schema.org/draft-04/schema#",
-    "type": "object",
-    "properties": {
-      "arpi_access": {
-        "type": "object",
-        "properties": {
-          "deploy_ssh_key": {
-            "type": "boolean"
-          },
-          "disable_ssh_password_authentication": {
-            "type": "boolean"
-          },
-          "hostname": {
-            "type": "string"
-          },
-          "key_name": {
-            "type": "string"
-          },
-          "password": {
-            "type": "string"
-          },
-          "username": {
-            "type": "string"
-          }
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "arpi_access": {
+      "type": "object",
+      "properties": {
+        "hostname": {
+          "type": "string",
+          "description": "Hostname or IP address of the target device"
         },
-        "required": [
-          "deploy_ssh_key",
-          "disable_ssh_password_authentication",
-          "hostname",
-          "password",
-          "username"
-        ]
+        "password": {
+          "type": "string",
+          "description": "Password or key passphrase for SSH authentication"
+        },
+        "deploy_ssh_key": {
+          "type": "boolean",
+          "description": "Whether to deploy SSH keys during installation"
+        },
+        "disable_ssh_password_authentication": {
+          "type": "boolean",
+          "description": "Whether to disable password authentication after key deployment"
+        }
       },
-      "database": {
-        "type": "object",
-        "properties": {
-          "content": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "username": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "content",
-          "name",
-          "username"
-        ]
-      },
-      "deployment": {
-        "type": "object",
-        "properties": {
-          "deploy_simulator": {
-            "type": "boolean"
-          },
-          "dhparam_size": {
-            "type": "integer"
-          },
-          "packages": {
-            "type": "object",
-            "properties": {
-              "nginx_version": {
-                "type": "string"
-              },
-              "postgresql_version": {
-                "type": "integer"
-              }
-            },
-            "required": [
-              "nginx_version",
-              "postgresql_version"
-            ]
-          },
-          "server_environment": {
-            "type": "string"
-          },
-          "webapplication_path": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "deploy_simulator",
-          "dhparam_size",
-          "packages",
-          "server_environment",
-          "webapplication_path"
-        ]
-      }
+      "required": [
+        "hostname",
+        "deploy_ssh_key",
+        "disable_ssh_password_authentication"
+      ]
     },
-    "required": [
-      "arpi_access",
-      "database",
-      "deployment"
-    ]
-  }
-  
-  
+    "database": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        }
+      },
+      "required": ["content", "name", "username"]
+    },
+    "deployment": {
+      "type": "object",
+      "properties": {
+        "deploy_simulator": {
+          "type": "boolean"
+        },
+        "dhparam_size": {
+          "type": "integer"
+        },
+        "packages": {
+          "type": "object",
+          "properties": {
+            "nginx_version": {
+              "type": "string"
+            },
+            "postgresql_version": {
+              "type": "integer"
+            }
+          },
+          "required": ["nginx_version", "postgresql_version"]
+        },
+        "server_environment": {
+          "type": "string"
+        },
+        "webapplication_path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "deploy_simulator",
+        "dhparam_size",
+        "packages",
+        "server_environment",
+        "webapplication_path"
+      ]
+    }
+  },
+  "required": ["arpi_access", "database", "deployment"]
+}
