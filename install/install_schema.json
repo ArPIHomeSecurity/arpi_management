@@ -46,11 +46,13 @@
     "deployment": {
       "type": "object",
       "properties": {
+        "board_version": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 3
+        },
         "deploy_simulator": {
           "type": "boolean"
-        },
-        "dhparam_size": {
-          "type": "integer"
         },
         "packages": {
           "type": "object",
@@ -73,7 +75,6 @@
       },
       "required": [
         "deploy_simulator",
-        "dhparam_size",
         "packages",
         "server_environment",
         "webapplication_path"

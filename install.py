@@ -5,7 +5,7 @@
 Script for installing the components of the ArPI home security system to a running
 Raspberry PI Zero Wifi host.
 
-It uses the configuration file install/[_<environment>].yaml!
+It uses the configuration file install/[<environment>].yaml!
 
 ---
 
@@ -16,14 +16,13 @@ It uses the configuration file install/[_<environment>].yaml!
 @contact:    gkovacs81@gmail.com
 """
 
-from glob import glob
 import json
 import logging
 import os
 import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from os import system
-from os.path import basename, exists, join
+from os.path import basename, join
 
 import yaml
 
@@ -57,13 +56,6 @@ def install_server(arpi_access, database, deployment, update=False, restart=Fals
     password = arpi_access.get("password")
     ssh = get_ssh_connection(arpi_access["hostname"], password)
     syncer = SshFileSyncer(ssh, progress=True)
-
-    dhparam_file = "arpi_dhparam.pem"
-    # execute_remote(
-    #     message="Creating server directories...",
-    #     ssh=ssh,
-    #     command="mkdir -p  server/etc server/scripts server/src webapplication",
-    # )
 
     # compress the server folder
     logger.info("Compressing server folder...")
@@ -110,14 +102,16 @@ def install_server(arpi_access, database, deployment, update=False, restart=Fals
         "DEPLOY_SIMULATOR": deployment.get("deploy_simulator", "false"),
     }
 
+    if "board_version" in deployment:
+        install_config["BOARD_VERSION"] = str(deployment["board_version"])
+
     # deploy source code
     execute_remote(
         message="Running full install script...",
         ssh=ssh,
         command="cd /tmp/server; "
-        f"{' '.join(f'{key}={value}' for key, value in install_config.items())} "
-        f"python3 -m install install-code --backup;"
-        "sudo chown -R argus:argus /home/argus/server",
+        f"sudo {' '.join(f'{key}={value}' for key, value in install_config.items())} "
+        f"python3 -m install deploy-code --backup",
     )
 
     if update:
@@ -129,8 +123,7 @@ def install_server(arpi_access, database, deployment, update=False, restart=Fals
             ssh=ssh,
             command="cd /home/argus/server; "
             f"sudo -E {' '.join(f'{key}={value}' for key, value in install_config.items())} "
-            f"python3 -m install full-install;"
-            "sudo chown -R argus:argus /home/argus/server",
+            f"python3 -m install install",
         )
 
     if restart:
