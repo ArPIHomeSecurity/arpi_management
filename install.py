@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # encoding: utf-8
 """
 
@@ -49,7 +49,7 @@ USAGE
 """
 
 
-def install_server(arpi_access, database, deployment, update=False, restart=False):
+def install_server(arpi_access, database, deployment, prepare=False, install_environment=False, restart=False):
     """
     Install the monitor component to a Raspberry PI.
     """
@@ -79,11 +79,12 @@ def install_server(arpi_access, database, deployment, update=False, restart=Fals
         logger.info("  %s", file_path)
     logger.info("Synced files statistics: %s", syncer.get_statistics())
 
-    execute_remote(
-        message="Install pipenv and click...",
-        ssh=ssh,
-        command="sudo apt-get update && sudo apt-get install -y pipenv python3-click",
-    )
+    if prepare:
+        execute_remote(
+            message="Install pipenv and click...",
+            ssh=ssh,
+            command="sudo apt-get update && sudo apt-get install -y pipenv python3-click",
+        )
 
     execute_remote(
         message="Decompressing server files...",
@@ -114,7 +115,7 @@ def install_server(arpi_access, database, deployment, update=False, restart=Fals
         f"python3 -m install deploy-code --backup",
     )
 
-    if update:
+    if install_environment:
         install_config["INSTALL_SOURCE"] = "/home/argus/server"
 
         # execute full install
@@ -194,10 +195,17 @@ def main() -> int:
         help="Restart depending service(s) after deployment",
     )
     comp_parser.add_argument(
-        "-u",
-        "--update",
+        "-i",
+        "--install-environment",
         action="store_true",
-        help="Update the python environment for the depending service(s) after deployment",
+        help="Install the environment for the server",
+    )
+    comp_parser.add_argument(
+        "-p",
+        "--prepare",
+        default=False,
+        action="store_true",
+        help="Prepare python click",
     )
 
     comp_parser = subparsers.add_parser("webapplication", help="Install the web application")
@@ -231,7 +239,8 @@ def main() -> int:
             config["arpi_access"],
             config["database"],
             config["deployment"],
-            args.update,
+            args.prepare,
+            args.install_environment,
             args.restart,
         )
     elif args.component == "webapplication":
@@ -239,7 +248,7 @@ def main() -> int:
     else:
         logger.error("Unknown component: %s", args.component)
 
-    logger.info("Finished successfully!")
+    logger.info("Installation finished!")
 
     return 0
 
