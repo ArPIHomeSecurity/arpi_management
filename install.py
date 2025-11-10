@@ -49,35 +49,13 @@ USAGE
 """
 
 
-def install_server(arpi_access, database, deployment, prepare=False, install_environment=False, restart=False):
+def install_server(arpi_access, database, deployment, prepare=False, deploy=False, install_environment=False, restart=False):
     """
     Install the monitor component to a Raspberry PI.
     """
     password = arpi_access.get("password")
     ssh = get_ssh_connection(arpi_access["hostname"], password)
     syncer = SshFileSyncer(ssh, progress=True)
-
-    # compress the server folder
-    logger.info("Compressing server folder...")
-
-    # Remove existing compressed file if it exists
-    package_path = "server/server.tar.gz"
-    if os.path.exists(package_path):
-        os.remove(package_path)
-
-    system(f"server/create_package.sh {deployment['server_environment']} server")
-
-    logger.info("Copying server %s to folder...", package_path)
-    syncer.list_copy(
-        [
-            (package_path, "/tmp/server.tar.gz"),
-        ]
-    )
-
-    logger.info("List of additional files:")
-    for file_path in syncer.list_additional_files:
-        logger.info("  %s", file_path)
-    logger.info("Synced files statistics: %s", syncer.get_statistics())
 
     if prepare:
         execute_remote(
@@ -86,34 +64,58 @@ def install_server(arpi_access, database, deployment, prepare=False, install_env
             command="sudo apt-get update && sudo apt-get install -y pipenv python3-click",
         )
 
-    execute_remote(
-        message="Decompressing server files...",
-        ssh=ssh,
-        command=(
-            "sudo rm -rf /tmp/server || true; "
-            "mkdir -p /tmp/server && "
-            "tar -xzf /tmp/server.tar.gz -C /tmp/server"
-        ),
-    )
+    if deploy:
+        # compress the server folder
+        logger.info("Compressing server folder...")
 
-    install_config = {
-        "PYTHONPATH": "src",
-        "INSTALL_SOURCE": "/tmp/server",
-        "DATA_SET_NAME": database.get("content", ""),
-        "DEPLOY_SIMULATOR": deployment.get("deploy_simulator", "false"),
-    }
+        # Remove existing compressed file if it exists
+        package_path = "server/server.tar.gz"
+        if os.path.exists(package_path):
+            os.remove(package_path)
 
-    if "board_version" in deployment:
-        install_config["BOARD_VERSION"] = str(deployment["board_version"])
+        system(f"server/create_package.sh {deployment['server_environment']} server")
 
-    # deploy source code
-    execute_remote(
-        message="Running full install script...",
-        ssh=ssh,
-        command="cd /tmp/server; "
-        f"sudo {' '.join(f'{key}={value}' for key, value in install_config.items())} "
-        f"python3 -m install deploy-code --backup",
-    )
+        logger.info("Copying server %s to folder...", package_path)
+        syncer.list_copy(
+            [
+                (package_path, "/tmp/server.tar.gz"),
+            ]
+        )
+
+        logger.info("List of additional files:")
+        for file_path in syncer.list_additional_files:
+            logger.info("  %s", file_path)
+        logger.info("Synced files statistics: %s", syncer.get_statistics())
+
+
+        execute_remote(
+            message="Decompressing server files...",
+            ssh=ssh,
+            command=(
+                "sudo rm -rf /tmp/server || true; "
+                "mkdir -p /tmp/server && "
+                "tar -xzf /tmp/server.tar.gz -C /tmp/server"
+            ),
+        )
+
+        install_config = {
+            "PYTHONPATH": "src",
+            "INSTALL_SOURCE": "/tmp/server",
+            "DATA_SET_NAME": database.get("content", ""),
+            "DEPLOY_SIMULATOR": deployment.get("deploy_simulator", "false"),
+        }
+
+        if "board_version" in deployment:
+            install_config["BOARD_VERSION"] = str(deployment["board_version"])
+
+        # deploy source code
+        execute_remote(
+            message="Running full install script...",
+            ssh=ssh,
+            command="cd /tmp/server; "
+            f"sudo {' '.join(f'{key}={value}' for key, value in install_config.items())} "
+            f"bin/install.py deploy-code --backup",
+        )
 
     if install_environment:
         install_config["INSTALL_SOURCE"] = "/home/argus/server"
@@ -124,7 +126,7 @@ def install_server(arpi_access, database, deployment, prepare=False, install_env
             ssh=ssh,
             command="cd /home/argus/server; "
             f"sudo -E {' '.join(f'{key}={value}' for key, value in install_config.items())} "
-            f"python3 -m install install",
+            f"bin/install.py install",
         )
 
     if restart:
@@ -189,10 +191,11 @@ def main() -> int:
 
     comp_parser = subparsers.add_parser("server", help="Install the server component")
     comp_parser.add_argument(
-        "-r",
-        "--restart",
+        "-p",
+        "--prepare",
+        default=False,
         action="store_true",
-        help="Restart depending service(s) after deployment",
+        help="Prepare python click",
     )
     comp_parser.add_argument(
         "-i",
@@ -201,11 +204,16 @@ def main() -> int:
         help="Install the environment for the server",
     )
     comp_parser.add_argument(
-        "-p",
-        "--prepare",
-        default=False,
+        "-d",
+        "--deploy",
         action="store_true",
-        help="Prepare python click",
+        help="Deploy the server code to the target device",
+    )
+    comp_parser.add_argument(
+        "-r",
+        "--restart",
+        action="store_true",
+        help="Restart depending service(s) after deployment",
     )
 
     comp_parser = subparsers.add_parser("webapplication", help="Install the web application")
@@ -240,6 +248,7 @@ def main() -> int:
             config["database"],
             config["deployment"],
             args.prepare,
+            args.deploy,
             args.install_environment,
             args.restart,
         )
