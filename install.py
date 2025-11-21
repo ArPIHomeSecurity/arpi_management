@@ -2,10 +2,17 @@
 # encoding: utf-8
 """
 
-Script for installing the components of the ArPI home security system to a running
-Raspberry PI Zero Wifi host.
+This script installs components of the ArPI home security system onto a running Raspberry Pi Zero Wifi host.
 
-It uses the configuration file install/[<environment>].yaml!
+It uses SSH for communicating with the target device, leveraging the user's SSH configuration for accessing hosts.
+The script reads deployment settings from a YAML configuration file located at install/[<environment>].yaml.
+
+Main features:
+- Prepares the target device by installing required Python packages.
+- Deploys and installs the server component, including code synchronization and environment setup.
+- Installs the web application component.
+- Optionally restarts relevant services after deployment.
+- Provides verbose logging and configuration verification before installation.
 
 ---
 
@@ -133,7 +140,7 @@ def install_server(arpi_access, database, deployment, prepare=False, deploy=Fals
         execute_remote(
             message="Restarting the argus_server and argus_monitor services...",
             ssh=ssh,
-            command="sudo systemctl restart argus_server.service argus_monitor.service",
+            command="sudo systemctl restart argus_server.service argus_monitor.service nginx.service",
         )
 
     ssh.close()

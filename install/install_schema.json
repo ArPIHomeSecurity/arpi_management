@@ -26,7 +26,8 @@
         "hostname",
         "deploy_ssh_key",
         "disable_ssh_password_authentication"
-      ]
+      ],
+      "additionalProperties": false
     },
     "database": {
       "type": "object",
@@ -41,7 +42,8 @@
           "type": "string"
         }
       },
-      "required": ["content", "name", "username"]
+      "required": ["content", "name", "username"],
+      "additionalProperties": false
     },
     "deployment": {
       "type": "object",
@@ -78,8 +80,10 @@
         "packages",
         "server_environment",
         "webapplication_path"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
-  "required": ["arpi_access", "database", "deployment"]
+  "required": ["arpi_access", "database", "deployment"],
+  "additionalProperties": false
 }

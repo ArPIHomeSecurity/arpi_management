@@ -3,8 +3,14 @@
         "addrs",
         "ADGSM",
         "arpi",
+        "KEYBUS",
+        "mosi",
         "mosquitto",
         "Syncer",
         "webapplication"
-    ]
+    ],
+    "yaml.schemaStore.enable": true,
+    "yaml.schemas": {
+        "./install/install_schema.json": "./install/*.yaml"
+    }
 }
