@@ -71,6 +71,12 @@ def install_server(arpi_access, database, deployment, prepare=False, deploy=Fals
             command="sudo apt-get update && sudo apt-get install -y pipenv python3-click",
         )
 
+    install_config = {
+        "PYTHONPATH": "src",
+        "INSTALL_SOURCE": "/tmp/server",
+        "DATA_SET_NAME": database.get("content", ""),
+        "DEPLOY_SIMULATOR": deployment.get("deploy_simulator", "false"),
+    }
     if deploy:
         # compress the server folder
         logger.info("Compressing server folder...")
@@ -105,19 +111,12 @@ def install_server(arpi_access, database, deployment, prepare=False, deploy=Fals
             ),
         )
 
-        install_config = {
-            "PYTHONPATH": "src",
-            "INSTALL_SOURCE": "/tmp/server",
-            "DATA_SET_NAME": database.get("content", ""),
-            "DEPLOY_SIMULATOR": deployment.get("deploy_simulator", "false"),
-        }
-
         if "board_version" in deployment:
             install_config["BOARD_VERSION"] = str(deployment["board_version"])
 
         # deploy source code
         execute_remote(
-            message="Running full install script...",
+            message="Running install script to deploy code...",
             ssh=ssh,
             command="cd /tmp/server; "
             f"sudo {' '.join(f'{key}={value}' for key, value in install_config.items())} "
@@ -127,12 +126,12 @@ def install_server(arpi_access, database, deployment, prepare=False, deploy=Fals
     if install_environment:
         install_config["INSTALL_SOURCE"] = "/home/argus/server"
 
-        # execute full install
+        # execute environment installation
         execute_remote(
-            message="Running full install script...",
+            message="Running install script to install the server environment...",
             ssh=ssh,
             command="cd /home/argus/server; "
-            f"sudo -E {' '.join(f'{key}={value}' for key, value in install_config.items())} "
+            f"sudo {' '.join(f'{key}={value}' for key, value in install_config.items())} "
             f"bin/install.py install",
         )
 
