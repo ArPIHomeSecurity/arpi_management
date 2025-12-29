@@ -3,16 +3,16 @@
 """
 
 This script installs components of the ArPI home security system onto a running Raspberry Pi Zero Wifi host.
+The purpose of the script is to support the development of the system with granular control over the installation process.
 
 It uses SSH for communicating with the target device, leveraging the user's SSH configuration for accessing hosts.
 The script reads deployment settings from a YAML configuration file located at install/[<environment>].yaml.
 
 Main features:
-- Prepares the target device by installing required Python packages.
-- Deploys and installs the server component, including code synchronization and environment setup.
-- Installs the web application component.
-- Optionally restarts relevant services after deployment.
-- Provides verbose logging and configuration verification before installation.
+- deploys server and web application components
+- supports bootstrapping the environment
+- handles database migrations post-deployment
+- provides verbose logging and configuration verification before installation
 
 ---
 
@@ -56,7 +56,16 @@ USAGE
 """
 
 
-def install_server(arpi_access, database, deployment, prepare=False, deploy=False, install_environment=False, restart=False):
+def install_server(
+    arpi_access,
+    database,
+    deployment,
+    prepare=False,
+    bootstrap=False,
+    deploy=False,
+    clean_install=False,
+    restart=False,
+):
     """
     Install the monitor component to a Raspberry PI.
     """
@@ -64,81 +73,127 @@ def install_server(arpi_access, database, deployment, prepare=False, deploy=Fals
     ssh = get_ssh_connection(arpi_access["hostname"], password)
     syncer = SshFileSyncer(ssh, progress=True)
 
+    # clean previous builds
+    system("rm -rf server/dist/* server/*.egg-info")
+
     if prepare:
+        # Install basic dependencies and build tools needed for pip packages
         execute_remote(
-            message="Install pipenv and click...",
+            message="Installing basic Python tools...",
             ssh=ssh,
-            command="sudo apt-get update && sudo apt-get install -y pipenv python3-click",
+            command="sudo apt-get update && sudo apt-get install -y python3-pip python3-click",
         )
 
-    install_config = {
-        "PYTHONPATH": "src",
-        "INSTALL_SOURCE": "/tmp/server",
-        "DATA_SET_NAME": database.get("content", ""),
-        "DEPLOY_SIMULATOR": deployment.get("deploy_simulator", "false"),
-    }
-    if deploy:
-        # compress the server folder
-        logger.info("Compressing server folder...")
+    if bootstrap or deploy:
+        # we need the bootstrap package for both bootstrap of the environment
+        # and the post-install step after deployment
+        result = system("cd server && scripts/create_bootstrap_package.sh")
+        if result != 0:
+            logger.error("Failed to create bootstrap package")
+            return
+        
+        # find the built package
+        package_dir = "server/dist"
+        package_files = [f for f in os.listdir(package_dir) if f.endswith('.tar.gz')]
+        if not package_files:
+            logger.error("No package file found in %s", package_dir)
+            return
+        
+        bootstrap_file = [p for p in package_files if 'bootstrap' in p][0]
+        logger.info("Built bootstrap package: %s", bootstrap_file)
 
-        # Remove existing compressed file if it exists
-        package_path = "server/server.tar.gz"
-        if os.path.exists(package_path):
-            os.remove(package_path)
-
-        system(f"server/create_package.sh {deployment['server_environment']} server")
-
-        logger.info("Copying server %s to folder...", package_path)
+        logger.info("Copying package to remote system...")
         syncer.list_copy(
             [
-                (package_path, "/tmp/server.tar.gz"),
+                (os.path.join(package_dir, bootstrap_file), f"/tmp/{bootstrap_file}"),
             ]
         )
 
-        logger.info("List of additional files:")
-        for file_path in syncer.list_additional_files:
-            logger.info("  %s", file_path)
-        logger.info("Synced files statistics: %s", syncer.get_statistics())
-
-
+    if bootstrap:
         execute_remote(
-            message="Decompressing server files...",
+            message="Extracting bootstrap package...",
+            ssh=ssh,
+            command=(f"tar -xzf /tmp/{bootstrap_file} -C /tmp/"),
+        )
+        execute_remote(
+            message="Bootstrapping environment...",
             ssh=ssh,
             command=(
-                "sudo rm -rf /tmp/server || true; "
-                "mkdir -p /tmp/server && "
-                "tar -xzf /tmp/server.tar.gz -C /tmp/server"
+                f"sudo BOARD_VERSION={deployment['board_version']} PYTHONPATH=/tmp/src python3 /tmp/src/installer/cli.py bootstrap"
             ),
         )
 
-        if "board_version" in deployment:
-            install_config["BOARD_VERSION"] = str(deployment["board_version"])
+    if deploy:
+        logger.info("Building Python package...")
+        
+        # build source distribution
+        system(f"ENVIRONMENT={deployment['server_environment']} server/scripts/create_package.sh")
 
-        # deploy source code
-        execute_remote(
-            message="Running install script to deploy code...",
-            ssh=ssh,
-            command="cd /tmp/server; "
-            f"sudo {' '.join(f'{key}={value}' for key, value in install_config.items())} "
-            f"bin/install.py deploy-code --backup",
+        # find the built package
+        package_dir = "server/dist"
+        package_files = [f for f in os.listdir(package_dir) if f.endswith('.whl')]
+        if not package_files:
+            logger.error("No package file found in %s", package_dir)
+            return
+
+        package_file = [p for p in package_files if 'arpi_server' in p][0]
+        logger.info("Built package: %s", package_file)
+        
+        # copy package to remote
+        logger.info("Copying package to remote system...")
+        syncer.list_copy(
+            [
+                (os.path.join(package_dir, package_file), f"/tmp/{package_file}"),
+            ]
         )
 
-    if install_environment:
-        install_config["INSTALL_SOURCE"] = "/home/argus/server"
-
-        # execute environment installation
+        # force installing the package to overwrite any existing files
         execute_remote(
-            message="Running install script to install the server environment...",
+            message="Installing the backend package...",
             ssh=ssh,
-            command="cd /home/argus/server; "
-            f"sudo {' '.join(f'{key}={value}' for key, value in install_config.items())} "
-            f"bin/install.py install",
+            command=(
+                "pip3 install --user "
+                "--break-system-packages "
+                f"--upgrade --force-reinstall --no-deps /tmp/{package_file}"
+            ),
+        )
+
+        extra_deps = ""
+        if "extra_packages" in deployment:
+            extra_deps = "[" + ",".join(deployment["extra_packages"]) + "]"
+
+        # install dependencies separately
+        execute_remote(
+            message="Installing package dependencies...",
+            ssh=ssh,
+            command=(
+                f"pip3 install --user --break-system-packages --upgrade '/tmp/{package_file}{extra_deps}'"
+            ),
+        )
+
+        db_content = ""
+        if clean_install:
+            db_content = f"DATA_SET_NAME={database['content']}"
+
+        execute_remote(
+            message="Extracting deployment package...",
+            ssh=ssh,
+            command=(f"tar -xzf /tmp/{bootstrap_file} -C /tmp/")
+        )
+        execute_remote(
+            message="Finalizing installation...",
+            ssh=ssh,
+            password=password,
+            command=(
+                f"sudo PYTHONPATH=/tmp/src {db_content} python3 /tmp/src/installer/cli.py post-install"
+            ),
         )
 
     if restart:
         execute_remote(
             message="Restarting the argus_server and argus_monitor services...",
             ssh=ssh,
+            password=password,
             command="sudo systemctl restart argus_server.service argus_monitor.service nginx.service",
         )
 
@@ -204,16 +259,22 @@ def main() -> int:
         help="Prepare python click",
     )
     comp_parser.add_argument(
-        "-i",
-        "--install-environment",
+        "-b",
+        "--bootstrap",
         action="store_true",
-        help="Install the environment for the server",
+        help="Bootstrap the environment for the server",
     )
     comp_parser.add_argument(
         "-d",
         "--deploy",
         action="store_true",
         help="Deploy the server code to the target device",
+    )
+    comp_parser.add_argument(
+        "-c",
+        "--clean-install",
+        action="store_true",
+        help="Perform a clean installation by removing and updating existing database content",
     )
     comp_parser.add_argument(
         "-r",
@@ -254,8 +315,9 @@ def main() -> int:
             config["database"],
             config["deployment"],
             args.prepare,
+            args.bootstrap,
             args.deploy,
-            args.install_environment,
+            args.clean_install,
             args.restart,
         )
     elif args.component == "webapplication":

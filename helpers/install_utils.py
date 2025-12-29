@@ -4,7 +4,6 @@ Module to handle SSH connections and command execution on remote servers.
 @author: gkovacs
 """
 
-import contextlib
 import logging
 import os
 from socket import gaierror
@@ -31,10 +30,19 @@ def print_ssh_output(output, errors, command=""):
 
 
 def print_lines(lines, indent="\t"):
-    for line in iter(lambda: lines.readline(2048), ""):
-        with contextlib.suppress(UnicodeDecodeError):
+    for line in iter(lines.readline, ""):
+        try:
             if line.strip() != "":
                 logger.info("%s%s", indent, line.rstrip())
+        except (UnicodeDecodeError, AttributeError):
+            # Skip lines that can't be decoded or handle bytes
+            if isinstance(line, bytes):
+                try:
+                    decoded = line.decode('utf-8', errors='replace')
+                    if decoded.strip() != "":
+                        logger.info("%s%s", indent, decoded.rstrip())
+                except Exception:
+                    pass
 
 
 def read_lines(lines):
@@ -45,10 +53,19 @@ def read_lines(lines):
     :return: concatenated string of lines
     """
     result = ""
-    for line in iter(lambda: lines.readline(2048), ""):
-        with contextlib.suppress(UnicodeDecodeError):
+    for line in iter(lines.readline, ""):
+        try:
             if line.strip() != "None":
                 result += line
+        except (UnicodeDecodeError, AttributeError):
+            # Handle bytes that can't be decoded
+            if isinstance(line, bytes):
+                try:
+                    decoded = line.decode('utf-8', errors='replace')
+                    if decoded.strip() != "None":
+                        result += decoded
+                except Exception:
+                    pass
     return result
 
 

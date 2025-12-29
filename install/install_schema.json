@@ -53,33 +53,23 @@
           "minimum": 2,
           "maximum": 3
         },
-        "deploy_simulator": {
-          "type": "boolean"
-        },
-        "packages": {
-          "type": "object",
-          "properties": {
-            "nginx_version": {
-              "type": "string"
-            },
-            "postgresql_version": {
-              "type": "integer"
-            }
-          },
-          "required": ["nginx_version", "postgresql_version"]
-        },
         "server_environment": {
           "type": "string"
         },
         "webapplication_path": {
           "type": "string"
+        },
+        "extra_packages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
-        "deploy_simulator",
-        "packages",
         "server_environment",
-        "webapplication_path"
+        "webapplication_path",
+        "extra_packages"
       ],
       "additionalProperties": false
     }
