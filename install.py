@@ -118,6 +118,7 @@ def install_server(
         execute_remote(
             message="Bootstrapping environment...",
             ssh=ssh,
+            password=password,
             command=(
                 f"sudo BOARD_VERSION={deployment['board_version']} PYTHONPATH=/tmp/src python3 /tmp/src/installer/cli.py bootstrap"
             ),
@@ -175,6 +176,9 @@ def install_server(
         if clean_install:
             db_content = f"DATA_SET_NAME={database['content']}"
 
+        board_version = f"BOARD_VERSION={deployment.get('board_version', 3)}"
+        use_simulator = f"USE_SIMULATOR={deployment.get('use_simulator', False)}"
+
         execute_remote(
             message="Extracting deployment package...",
             ssh=ssh,
@@ -185,7 +189,7 @@ def install_server(
             ssh=ssh,
             password=password,
             command=(
-                f"sudo PYTHONPATH=/tmp/src {db_content} python3 /tmp/src/installer/cli.py post-install"
+                f"sudo PYTHONPATH=/tmp/src {db_content} {use_simulator} {board_version} python3 /tmp/src/installer/cli.py post-install"
             ),
         )
 

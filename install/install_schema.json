@@ -53,6 +53,9 @@
           "minimum": 2,
           "maximum": 3
         },
+        "use_simulator": {
+          "type": "boolean"
+        },
         "server_environment": {
           "type": "string"
         },
