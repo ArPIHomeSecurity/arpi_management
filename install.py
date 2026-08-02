@@ -195,10 +195,10 @@ def install_server(
 
     if restart:
         execute_remote(
-            message="Restarting the argus_server and argus_monitor services...",
+            message="Restarting the argus_server, argus_mcp, and argus_monitor services...",
             ssh=ssh,
             password=password,
-            command="sudo systemctl restart argus_server.service argus_monitor.service nginx.service",
+            command="sudo systemctl restart argus_server.service argus_mcp.service argus_monitor.service nginx.service",
         )
 
     ssh.close()
