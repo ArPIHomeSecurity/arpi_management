@@ -172,9 +172,14 @@ def install_server(
             ),
         )
 
-        db_content = ""
+        data_set_name = ""
         if clean_install:
-            db_content = f"DATA_SET_NAME={database['content']}"
+            data_set_content = database.get("content")
+            if not data_set_content:
+                raise ValueError(
+                    "database.content must name a data set when --clean-install is used"
+                )
+            data_set_name = f"DATA_SET_NAME={data_set_content}"
 
         board_version = f"BOARD_VERSION={deployment.get('board_version', 3)}"
         use_simulator = f"USE_SIMULATOR={deployment.get('use_simulator', False)}"
@@ -189,7 +194,8 @@ def install_server(
             ssh=ssh,
             password=password,
             command=(
-                f"sudo PYTHONPATH=/tmp/src {db_content} {use_simulator} {board_version} python3 /tmp/src/installer/cli.py post-install"
+                f"sudo env PYTHONPATH=/tmp/src {data_set_name} {use_simulator} {board_version} "
+                f"python3 /tmp/src/installer/cli.py post-install"
             ),
         )
 
