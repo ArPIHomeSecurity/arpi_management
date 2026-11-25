@@ -1,0 +1,14 @@
+{
+	"mcpServers": {
+		"ArPI otthon": {
+			"type": "http",
+			"url": "https://kovacs-home.ddns.net/mcp",
+			"tools": [
+				"*"
+			],
+			"headers": {
+				"Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MzAxNjYzMjAsInNlY3JldCI6IkFCMDgxN0I5Njg1NDlBREU5RDc1N0Q0NUE0M0UzRDgzMjgyNkMzQjlBQjRGNzhENzBGNDc2MjI1ODcyRTgyMTQiLCJ0aW1lc3RhbXAiOjE3NzcxMDc2NTksInR0bCI6MH0.rqX8gECqQ4dZmAWHXhhz6EeQoWOrWOUj9SXwGaWbhiM"
+			}
+		}
+	}
+}
